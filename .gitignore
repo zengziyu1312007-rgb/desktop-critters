@@ -1,0 +1,10 @@
+# Local builds and generated files
+.DS_Store
+.build-cache/
+dist/
+*.log
+
+# Local credentials and personal ecology saves
+.env
+.env.*
+ecology*.json

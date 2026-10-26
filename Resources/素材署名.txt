@@ -1,0 +1,14 @@
+桌面有点脏 v0.2 — 蟑螂照片素材
+
+原始摄影：Gary Alpert
+原图：American-cockroach.jpg
+来源：https://commons.wikimedia.org/wiki/File:American-cockroach.jpg
+原始文件：https://upload.wikimedia.org/wikipedia/commons/3/3b/American-cockroach.jpg
+许可：Creative Commons Attribution 2.5 Generic (CC BY 2.5)
+许可链接：https://creativecommons.org/licenses/by/2.5/
+
+本应用中的 roach-body-photo.png 是改编素材：以原图为输入，通过 OpenAI 内置图像工具去除背景、腿和触角，并保留／重建身体纹理；运行时裁掉透明留白、缩放和旋转，另叠加程序动画腿与触角。
+改编处理：Peter 玩 AI 桌宠项目，2026-09-25。
+此署名不表示摄影师认可或参与本应用。原图在来源页另列其他许可，本项目采用其 CC BY 2.5 选项。
+
+蚂蚁虫体 ant-body-photo-v1.png：2026-10-06 使用内置 image_gen 生成的写实风格透明素材，并非实拍照片。提示词见 Textures/ant-body-photo-v1.prompt.txt。六条腿与触角由 AppKit 实时绘制并运动。
