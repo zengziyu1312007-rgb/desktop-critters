@@ -1,0 +1,1 @@
+return DesktopCritters.ModelTests.Run();

@@ -1,0 +1,16 @@
+using System;
+using System.IO;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using DesktopCritters.Core;
+namespace DesktopCritters;
+public static class SmokeTests {
+ private static void Save(string file,DrawingVisual visual,int width,int height){var bitmap=new RenderTargetBitmap(width,height,96,96,PixelFormats.Pbgra32);bitmap.Render(visual);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using var output=File.Create(file);png.Save(output);}
+ public static int Run(string directory){Directory.CreateDirectory(directory);var app=new System.Windows.Application{ShutdownMode=ShutdownMode.OnExplicitShutdown};int code=1;app.Startup+=(_,_)=>{try{var w=new World(1440,900,11);var overlay=new Overlay(w,()=>{},()=>{});overlay.Show();overlay.SetPassthrough(true);if(!overlay.NativePassthrough)throw new Exception("Transparent input style not set");overlay.SetPassthrough(false);if(overlay.NativePassthrough)throw new Exception("Interactive input style not restored");overlay.SetPassthrough(true);Console.WriteLine("PASS: native transparent window and click-through style toggle");
+  var dirty=new World(1440,900,5);dirty.Bugs.Clear();dirty.Eggs.Clear();dirty.Foods.Clear();var roach=new Bug{Id=1,Species=Species.Roach,P=new V(480,550),Bulk=.7,ShownBulk=.7};var ant=new Bug{Id=2,Species=Species.Ant,P=new V(1080,580),Bulk=1,ShownBulk=1};dirty.Bugs.Add(roach);dirty.Bugs.Add(ant);dirty.AddFood(new V(380,220),Snack.Banquet);dirty.AddFood(new V(1050,220),Snack.Pizza);dirty.Swat(roach.P);dirty.Splats[0].Age=.3;dirty.SlapAge=1;
+  var visual=new DrawingVisual();using(var c=visual.RenderOpen()){c.DrawRectangle(Art.Cream,null,new Rect(0,0,1440,900));Art.Draw(dirty,c,false);}Save(Path.Combine(directory,"windows-battlefield.png"),visual,1440,900);Console.WriteLine("PASS: WPF textures, giant food, liquid and live specimen render");
+  dirty.SweepAt(roach.P);dirty.Sweeps[0].Age=.28;visual=new DrawingVisual();using(var c=visual.RenderOpen()){c.DrawRectangle(Art.Cream,null,new Rect(0,0,1440,900));Art.Draw(dirty,c,false);}Save(Path.Combine(directory,"windows-broom.png"),visual,1440,900);Console.WriteLine("PASS: WPF broom cleaning effect renders");
+  var host=new Host(app);host.Panel.Show();host.Panel.UpdateLayout();host.Panel.Refresh();var bitmap=new RenderTargetBitmap((int)Math.Ceiling(host.Panel.ActualWidth),(int)Math.Ceiling(host.Panel.ActualHeight),96,96,PixelFormats.Pbgra32);bitmap.Render(host.Panel);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bitmap));using(var stream=File.Create(Path.Combine(directory,"windows-controls.png")))png.Save(stream);host.Quitting=true;host.Panel.Close();overlay.Close();Console.WriteLine("PASS: native control panel layout renders");code=0;
+ }catch(Exception e){Console.Error.WriteLine(e);}finally{app.Shutdown();}};app.Run();return code;}
+}

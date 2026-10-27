@@ -8,3 +8,8 @@ dist/
 .env
 .env.*
 ecology*.json
+
+# .NET build products
+**/bin/
+**/obj/
+windows/out/
