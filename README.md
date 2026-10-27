@@ -2,21 +2,28 @@
 
 蟑螂和蚂蚁住进你的 Mac 桌面。投食、繁殖、围攻、巨化，再用拖鞋和扫把收拾战场。
 
-当前版本：**v0.7.3**，macOS 原生 Swift / AppKit 应用。
+同一个仓库维护两套原生桌宠：**Mac v0.7.3**（Swift / AppKit）和 **Windows v0.8.0**（C# / WPF）。
 
 ## 下载与开启
 
-在本仓库的 **Releases** 页面下载 `DesktopCritters-v0.7.3-macOS-arm64.zip`，解压后双击 **桌面有点脏.app**。
+打开 [统一下载页面](https://zengziyu1312007-rgb.github.io/desktop-critters/)，页面会推荐与你电脑系统对应的版本，也可手动选择。
 
-- 支持 Apple Silicon Mac（M1 及后续芯片），macOS 13 或更新系统。
-- 运行时不需要 Python、Node.js 或其他第三方依赖。
-- 当前应用使用本机临时签名，尚未进行 Apple Developer ID 签名与公证。
+| 平台 | 下载 | 兼容范围 |
+| --- | --- | --- |
+| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
+| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.7.3-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
+
+两端安装包都不要求另装开发环境。Windows运行安装包后从开始菜单打开；Mac解压后双击“桌面有点脏.app”。安装仍需用户确认。
+
+Mac下载包与原v0.7.3逐字节相同，现有安装、Bundle ID和存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
+
+当前两个平台都尚未进行商业证书签名／公证，系统可能显示发布者提示。首版Windows的多屏、部分缩放与实际鼠标体验仍待更多真机反馈。
 
 启动后默认为全桌面陪伴，虫群自行觅食和成长，鼠标可以穿透。
 
-Windows 可以使用同一仓库分别构建与发布；当前尚无 Windows 安装包。参见 [跨平台安排](docs/cross-platform.md)。
-
 ## 面板在哪里
+
+Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在应用前台时找回。以下是Mac入口：
 
 - 顶部菜单栏点 **桌宠 → 打开控制面板**。
 - 点击 Dock 中的应用图标，可以再次显示面板。
@@ -56,10 +63,15 @@ Windows 可以使用同一仓库分别构建与发布；当前尚无 Windows 安
 
 ## 从源码构建
 
+Windows构建见 [windows/README.md](windows/README.md)，核心有独立的72项行为检查；下方是Mac构建：
+
 安装 Xcode Command Line Tools，然后在仓库根目录运行：
 
 ```sh
 bash build.sh
+windows/             # Windows原生工程、安装器与检查
+tests/               # Windows核心和下载入口检查
+docs/                # 统一下载页
 ```
 
 输出：`dist/桌面有点脏.app`。脚本使用本机 macOS SDK、Swift 编译器与临时代码签名，不下载第三方依赖。重新构建前请退出本目录构建出来的运行实例。
@@ -70,7 +82,7 @@ bash build.sh
 ./dist/桌面有点脏.app/Contents/MacOS/DesktopCritters --self-test
 ```
 
-当前包含 120 项行为检查，覆盖取食、生命周期、人口名额、体型比例、拍击爆浆、汁液持久化与清扫、外交、外敌与存档恢复。长时间 GUI 性能、Intel Mac 和 Windows 版本尚未验证。
+当前包含 120 项行为检查，覆盖取食、生命周期、人口名额、体型比例、拍击爆浆、汁液持久化与清扫、外交、外敌与存档恢复。长时间GUI性能和Intel Mac尚未验证；Windows另有核心与原生窗口检查，见其构建说明。
 
 ## 本机存档
 
@@ -95,6 +107,9 @@ Resources/
   AppIcon.icns
   素材署名.txt
 build.sh
+windows/             # Windows原生工程、安装器与检查
+tests/               # Windows核心和下载入口检查
+docs/                # 统一下载页
 ```
 
 ## 素材来源

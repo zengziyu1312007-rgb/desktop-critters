@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>桌面有点脏 · 下载</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:#233b32;background:#f7f4eb;font-synthesis:none}*{box-sizing:border-box}body{margin:0}main{max-width:980px;margin:0 auto;padding:64px 24px 40px}.eyebrow{font-size:12px;letter-spacing:.2em;color:#7b897e}h1{font-size:clamp(36px,7vw,66px);letter-spacing:-.05em;margin:16px 0}p{line-height:1.8;color:#657469}.intro{font-size:18px;max-width:650px}.state{margin:30px 0 18px;font-size:14px;min-height:25px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{border:1px solid #dce1d6;border-radius:22px;background:#eeeee5;padding:28px;display:flex;flex-direction:column;position:relative}.card.recommended{background:#e2e9df;border:2px solid #476a52;padding:27px}.badge{font-size:12px;background:#233b32;color:#f7f4eb;padding:5px 10px;border-radius:20px;align-self:flex-start;margin-bottom:12px}.badge[hidden]{display:none}h2{font-size:26px;margin:0 0 8px}.version{font-size:13px;color:#829084;margin-bottom:18px}.compat{min-height:56px;font-size:14px;margin:0 0 22px}a.button{display:block;text-align:center;border-radius:12px;padding:15px 12px;text-decoration:none;background:#233b32;color:#f7f4eb;font-weight:650;transition:background .15s}a.button:hover{background:#3a5b47}a:focus-visible{outline:3px solid #b17f34;outline-offset:4px}.secondary{color:#536f5b;font-size:13px;text-align:center;display:block;margin-top:14px}.below{border-top:1px solid #dedfd4;margin-top:34px;padding-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:22px}.below h3{font-size:16px;margin:0 0 8px}.below p{font-size:14px;margin:0}.links{margin-top:28px;display:flex;gap:20px;flex-wrap:wrap;font-size:13px}.links a{color:#607764}.note{font-size:12px;color:#8a9186;margin-top:24px}@media(max-width:620px){main{padding:38px 18px}.cards,.below{grid-template-columns:1fr}.compat{min-height:0}.card{padding:23px}.card.recommended{padding:22px}.intro{font-size:16px}}
+</style></head><body><main>
+<div class="eyebrow">DESKTOP CRITTERS</div><h1>桌面有点脏</h1><p class="intro">把蟑螂和蚂蚁养在电脑桌面。喂一口，长一截；看它们争食、繁殖、打架，再拿拖鞋和扫把收拾残局。</p>
+<div class="state" id="system-status" role="status">选择你的电脑版本，下载后打开安装。</div>
+<section class="cards" aria-label="下载版本">
+<article class="card" id="windows-card"><span class="badge" id="windows-badge" hidden>为当前电脑推荐</span><h2>Windows</h2><div class="version">首个 Windows 版 · v0.8.0</div><p class="compat">Windows 10 / 11，64 位 Intel 或 AMD 电脑。已包含运行环境，无需另装 .NET。</p><a class="button" id="windows-download" href="https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Setup.exe">下载 Windows 安装包</a><a class="secondary" href="https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Portable.zip">免安装版 ZIP</a></article>
+<article class="card" id="mac-card"><span class="badge" id="mac-badge" hidden>为当前电脑推荐</span><h2>Mac</h2><div class="version">原生 Mac 版 · v0.7.3</div><p class="compat">macOS 13 或更新系统，Apple Silicon（M 系列芯片）。Intel 芯片 Mac 暂不支持。</p><a class="button" id="mac-download" href="https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.7.3-macOS-arm64.zip">下载 Mac 版</a><a class="secondary" href="https://github.com/zengziyu1312007-rgb/desktop-critters/releases/tag/v0.7.3">查看原 Mac 版本</a></article>
+</section>
+<section class="below"><div><h3>Windows 怎么开启？</h3><p>运行安装包后，从开始菜单打开“桌面有点脏”。面板收起后，双击系统托盘里的图标找回。选工具开始互动，按 Esc 回到鼠标穿透。</p></div><div><h3>Mac 怎么开启？</h3><p>解压后双击“桌面有点脏.app”。顶部“桌宠”菜单或 Dock 图标可以打开控制面板，原来的虫群存档可以继续使用。</p></div></section>
+<p class="note">当前安装包尚未进行商业证书签名，系统可能显示发布者提示。Windows 首版的多屏与部分缩放组合仍需实机体验；浏览器识别不准确时，可手动选择版本。</p>
+<nav class="links"><a href="https://github.com/zengziyu1312007-rgb/desktop-critters">GitHub 仓库</a><a href="https://github.com/zengziyu1312007-rgb/desktop-critters/releases/tag/v0.8.0">全部下载与校验文件</a><a href="https://github.com/zengziyu1312007-rgb/desktop-critters/issues">反馈问题</a></nav>
+</main><script src="platform.js"></script><script>
+(async function () {
+ let hints = navigator.userAgentData || {};
+ try { if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) hints = await navigator.userAgentData.getHighEntropyValues(['architecture','bitness','platform']); } catch (_) {}
+ const kind = DesktopCrittersPlatform.detectDevice({userAgent:navigator.userAgent,platform:navigator.platform,maxTouchPoints:navigator.maxTouchPoints,hints});
+ const state = document.getElementById('system-status');
+ if (kind === 'windows' || kind === 'mac') {
+  document.getElementById(kind+'-card').classList.add('recommended');document.getElementById(kind+'-badge').hidden=false;
+  state.textContent=kind==='windows'?'检测到 Windows，已为你推荐 Windows 安装包。':'检测到 Mac，请确认电脑使用 M 系列芯片。';
+ } else state.textContent=kind==='mobile'?'你正在使用手机，请在电脑上打开此页面下载安装。':kind==='windows-arm'?'检测到 Windows ARM 设备；当前 x64 版本尚未在这类设备上验证。':'暂时无法确认系统，请手动选择与你电脑匹配的版本。';
+})();
+</script></body></html>
