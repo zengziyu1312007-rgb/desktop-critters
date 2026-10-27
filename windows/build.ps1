@@ -20,10 +20,14 @@ try {
   if ($Process.ExitCode -ne 0) { Get-Content (Join-Path $LogDir 'native-window-errors.txt'); throw 'WPF native smoke checks failed' }
   $Iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
   if (!(Test-Path $Iscc)) { throw 'Install Inno Setup 6 to build the installer.' }
-  $LanguageDir = Join-Path (Split-Path $Iscc) 'Languages'
-  if (!(Test-Path (Join-Path $LanguageDir 'ChineseSimplified.isl'))) {
-    Invoke-WebRequest 'https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl' -OutFile (Join-Path $LanguageDir 'ChineseSimplified.isl')
+  # Localize the compiler's own language file without a network-only build dependency.
+  $BaseLanguage = Get-Content (Join-Path (Split-Path $Iscc) 'Default.isl') -Raw
+  $Translations = Get-Content (Join-Path $ProjectDir 'Assets/zh-cn.json') -Raw | ConvertFrom-Json -AsHashtable
+  foreach ($Key in $Translations.Keys) {
+    $Value = $Translations[$Key]
+    $BaseLanguage = [regex]::Replace($BaseLanguage, '(?m)^' + [regex]::Escape($Key) + '=[^\r\n]*', { param($Match) "$Key=$Value" })
   }
+  $BaseLanguage | Set-Content -Encoding utf8BOM (Join-Path $OutDir 'ChineseSimplified.isl')
   & $Iscc "/DPublishDir=$PublishDir" "/DOutputDir=$ReleaseDir" (Join-Path $ProjectDir 'installer.iss')
   if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
   Compress-Archive -Path (Join-Path $PublishDir '*') -DestinationPath (Join-Path $ReleaseDir 'DesktopCritters-v0.8.0-Windows-x64-Portable.zip') -Force

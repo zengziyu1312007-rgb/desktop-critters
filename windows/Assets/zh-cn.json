@@ -1,0 +1,14 @@
+{
+ "LanguageName":"简体中文","LanguageID":"$0804","LanguageCodePage":"0",
+ "SetupAppTitle":"安装程序","SetupWindowTitle":"安装 - %1","UninstallAppTitle":"卸载程序","UninstallAppFullTitle":"卸载 %1",
+ "InformationTitle":"信息","ConfirmTitle":"确认","ErrorTitle":"错误",
+ "ButtonBack":"< 上一步(&B)","ButtonNext":"下一步(&N) >","ButtonInstall":"安装(&I)","ButtonOK":"确定","ButtonCancel":"取消","ButtonYes":"是(&Y)","ButtonNo":"否(&N)","ButtonFinish":"完成(&F)","ButtonBrowse":"浏览(&B)...","ButtonWizardBrowse":"浏览(&R)...","ButtonNewFolder":"新建文件夹(&M)",
+ "ClickNext":"点击“下一步”继续，或点击“取消”退出安装。",
+ "WelcomeLabel1":"欢迎使用 [name] 安装向导",
+ "WelcomeLabel2":"即将在你的电脑上安装 [name/ver]。%n%n请先关闭正在运行的同名程序。",
+ "WizardSelectDir":"选择安装位置","SelectDirLabel3":"将 [name] 安装到以下文件夹。",
+ "WizardSelectTasks":"选择附加任务","SelectTasksLabel2":"选择安装时需要执行的附加任务。",
+ "WizardReady":"准备安装","ReadyLabel1":"现在可以开始在你的电脑上安装 [name]。","ReadyLabel2a":"点击“安装”开始，或点击“上一步”检查设置。","ReadyLabel2b":"点击“安装”继续。",
+ "WizardInstalling":"正在安装","StatusExtractFiles":"正在解压文件...","StatusCreateIcons":"正在创建快捷方式...",
+ "FinishedHeadingLabel":"[name] 安装完成","FinishedLabelNoIcons":"[name] 已安装到你的电脑。","FinishedLabel":"[name] 已安装到你的电脑，可以从快捷方式启动。"
+}
