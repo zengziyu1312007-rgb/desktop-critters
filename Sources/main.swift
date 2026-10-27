@@ -163,7 +163,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         hidden=false; overlay.orderFrontRegardless(); panel.orderFrontRegardless()
         world.release(); world.tool=tool; world.watchedID=nil
         updateAvoid()
-        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放蟑螂卵，暂停时也可以摆放。","点桌面放蚂蚁卵，暂停时也可以摆放。"][tool.rawValue],force:true)
+        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体、汁液和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放蟑螂卵，暂停时也可以摆放。","点桌面放蚂蚁卵，暂停时也可以摆放。"][tool.rawValue],force:true)
         applyInput(); NSApp.activate(ignoringOtherApps:true)
     }
     @objc func toggleFrame() {
@@ -252,7 +252,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         if now-lastUI > 0.2 {
             panelView.refresh();lastUI=now
             let mode = world.mode == .battle ? "互动中" : (world.mode == .companion ? "陪伴中" : "本局结束")
-            arena.setAccessibilityLabel("互动桌面：\(mode)，\(world.foods.count)份零食，\(world.corpses.count)具尸体，\(world.eggs.count)枚卵，\(world.bugs.filter{!$0.adult}.count)只幼体，累计孵化\(world.hatchedCount)，成年\(world.maturedCount)，剩余\(Int(world.remaining))秒。关系\(world.relations.title)。冲突死亡\(world.combatDeaths)。工具\(world.tool.rawValue+1)。\(world.paused ? "暂停" : "运行")。\(world.filming ? "竖屏" : "全桌面")。生命速度\(Int(world.lifeRate))。巨型\(world.bugs.filter{$0.bulkValue>=0.78}.count)只。外敌\(world.invaders.filter{!$0.dead}.count)只。扫动\(world.sweeps.count)。观察\(world.observation?.1 ?? "无")。")
+            arena.setAccessibilityLabel("互动桌面：\(mode)，\(world.foods.count)份零食，\(world.corpses.count)具尸体，\(world.eggs.count)枚卵，\(world.bugs.filter{!$0.adult}.count)只幼体，累计孵化\(world.hatchedCount)，成年\(world.maturedCount)，剩余\(Int(world.remaining))秒。关系\(world.relations.title)。冲突死亡\(world.combatDeaths)。工具\(world.tool.rawValue+1)。\(world.paused ? "暂停" : "运行")。\(world.filming ? "竖屏" : "全桌面")。生命速度\(Int(world.lifeRate))。巨型\(world.bugs.filter{$0.bulkValue>=0.78}.count)只。外敌\(world.invaders.filter{!$0.dead}.count)只。扫动\(world.sweeps.count)。汁液\(world.splats.count)摊。观察\(world.observation?.1 ?? "无")。")
         }
         // Read the global pointer position without an event tap or Accessibility permission.
         if world.interactive {

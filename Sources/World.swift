@@ -96,6 +96,24 @@ struct Food: Codable {
 struct Puff: Codable {
     var p: V; var velocity: V; var life: Double; let lifetime: Double; let kind: Int
 }
+struct JuiceDrop:Codable {
+    var offset:V;var radius:Double;let flight:Double
+}
+struct JuiceSplat:Codable {
+    let bugID:Int;var p:V;var radius:Double;let angle:Double;let crushed:Bool
+    var age:Double=0
+    var drops:[JuiceDrop]
+    func hit(_ point:V,padding:Double=0)->Bool {
+        let d=point-p,cs=cos(angle),sn=sin(angle)
+        let local=V(x:d.x*cs+d.y*sn,y: -d.x*sn+d.y*cs)
+        if local.x*local.x/pow(radius*1.9+padding,2)+local.y*local.y/pow(radius*0.85+padding,2)<=1 {return true}
+        return drops.contains{local.distance($0.offset)<$0.radius+padding}
+    }
+    func offset(of drop:JuiceDrop,at time:Double)->V {
+        let t=min(1,max(0,time/drop.flight)),travel=1-pow(1-t,2)
+        return V(x:drop.offset.x*travel,y:drop.offset.y*travel-radius*2.6*4*t*(1-t))
+    }
+}
 struct Trail: Codable { var p: V; var life: Double }
 struct Notice: Codable { var text: String; var time: Double }
 
@@ -116,6 +134,7 @@ struct Invader:Codable {
 }
 struct Sweep {
     let p:V;let bodies:[Bug];let eggs:[Egg];let invaders:[Invader]
+    var stains:[JuiceSplat]=[]
     var age:Double=0
     let duration:Double=0.65
 }
@@ -145,6 +164,7 @@ struct EcologySave:Codable {
     var relations:Relations;var relationAge:Double;var deathsAtPeace:Int
     var reports:[DailyReport];var random:SeedRandom
     var invaders:[Invader]? = nil
+    var splats:[JuiceSplat]? = nil
 }
 
 final class World {
@@ -154,6 +174,7 @@ final class World {
     var foods: [Food] = []
     var eggs: [Egg] = []
     var corpses: [Corpse] = []
+    var splats:[JuiceSplat]=[]
     var archivedCorpses = 0
     var bugSerial = 0
     var roachFood = 8; var antFood = 6
@@ -210,7 +231,7 @@ final class World {
     }
     func saveData() throws -> Data {
         var state=EcologySave(width:width,height:height,bugs:bugs,eggs:eggs,foods:foods,corpses:corpses,archived:archivedCorpses,bugSerial:bugSerial,foodSerial:foodSerial,roachFood:roachFood,antFood:antFood,roachBirthTimer:roachBirthTimer,antBirthTimer:antBirthTimer,hatched:hatchedCount,matured:maturedCount,deaths:combatDeaths,clock:clock,relations:relations,relationAge:relationAge,deathsAtPeace:deathsAtPeace,reports:reports,random:random)
-        state.invaders=invaders
+        state.invaders=invaders;state.splats=splats
         return try JSONEncoder().encode(state)
     }
     func restore(_ data:Data) throws {
@@ -219,14 +240,18 @@ final class World {
         guard s.version==1,s.bugs.count<=300,s.eggs.count<=300,s.foods.count<=18,s.corpses.count<=160,
               s.width>0,s.height>0,Set(ids).count==ids.count,ids.allSatisfy({$0<s.bugSerial}),s.reports.count<=90 else {throw NSError(domain:"EcologySave",code:1)}
         guard s.bugs.allSatisfy({($0.bulk ?? 0).isFinite && (0...1).contains($0.bulk ?? 0)}),
-              (s.invaders ?? []).count<=8 else {throw NSError(domain:"EcologySave",code:2)}
+              (s.invaders ?? []).count<=8,(s.splats ?? []).count<=96,
+              (s.splats ?? []).allSatisfy({ j in
+                  j.p.x.isFinite && j.p.y.isFinite && j.radius.isFinite && j.radius>0 && j.radius<=240 && j.angle.isFinite && j.age.isFinite && j.age>=0 && j.drops.count<=64 &&
+                  j.drops.allSatisfy{$0.offset.x.isFinite && $0.offset.y.isFinite && $0.radius.isFinite && $0.radius>0 && $0.radius<=80 && $0.flight.isFinite && $0.flight>0 && $0.flight<=2}
+              }) else {throw NSError(domain:"EcologySave",code:2)}
         let newWidth=width,newHeight=height
         width=s.width;height=s.height;bugs=s.bugs;eggs=s.eggs;foods=s.foods;corpses=s.corpses
         archivedCorpses=s.archived;bugSerial=s.bugSerial;foodSerial=s.foodSerial
         roachFood=s.roachFood;antFood=s.antFood;roachBirthTimer=s.roachBirthTimer;antBirthTimer=s.antBirthTimer
         hatchedCount=s.hatched;maturedCount=s.matured;combatDeaths=s.deaths;clock=s.clock
         relations=s.relations;relationAge=s.relationAge;deathsAtPeace=s.deathsAtPeace;reports=s.reports;random=s.random
-        invaders=s.invaders ?? [];sweeps=[];fights=[]
+        invaders=s.invaders ?? [];splats=(s.splats ?? []).map{var j=$0;j.age=max(1,j.age);return j};sweeps=[];fights=[]
         rebalanceGrowth();resize(width:newWidth,height:newHeight);ensureDay()
     }
     var selectedSnack:Snack = .cookie
@@ -262,6 +287,7 @@ final class World {
         for i in eggs.indices { eggs[i].p=convert(eggs[i].p) }
         for i in foods.indices { foods[i].p=convert(foods[i].p) }
         for i in corpses.indices { corpses[i].bug.p=convert(corpses[i].bug.p) }
+        for i in splats.indices {splats[i].p=convert(splats[i].p)}
         trails.removeAll(); puffs.removeAll();fights.removeAll()
     }
     func cycleRate() { lifeRate = lifeRate == 1 ? 2 : (lifeRate == 2 ? 4 : 1) }
@@ -325,7 +351,7 @@ final class World {
     }
     func populate(battle: Bool) {
         bugs.removeAll(); foods.removeAll(); trails.removeAll(); puffs.removeAll();fights.removeAll();sweeps=[];invaders=[];invasionTimer=140
-        eggs.removeAll(); corpses.removeAll(); archivedCorpses = 0
+        eggs.removeAll(); corpses.removeAll(); splats=[]; archivedCorpses = 0
         roachFood = 120; antFood = 180; roachBirthTimer = 6; antBirthTimer = 5
         combatDeaths=0; combatTimer=0;relations = .hostile;relationAge=0;deathsAtPeace=0
         hatchedCount = 0; maturedCount = 0; watchedID = nil
@@ -453,17 +479,33 @@ final class World {
         if b.morph != oldMorph {record("进食蜕变：\(b.species == .roach ? "蟑螂" : "蚂蚁") #\(b.id) 长成\(b.morphTitle)");say(b.bulkValue>=0.78 ? "\(b.morphTitle)！这一营的巨虫诞生了。" : "\(b.morphTitle)！大餐继续喂给它。",force:true)}
         burst(foods[index].p,kind:0,count:5)
     }
+    func spillJuice(_ b:Bug,crushed:Bool) {
+        guard b.species == .roach,!splats.contains(where:{$0.bugID==b.id}) else {return}
+        let k=scale(for:b),r=min(180,max(5,16*k*(crushed ? 1.4 : 0.8)))
+        // Visual randomness is independent of the ecology generator.
+        var ink=SeedRandom(value:UInt64(max(0,b.id)) &* 7919 &+ UInt64(max(0,clock*1000)) &+ 71)
+        let count=min(64,Int(32+min(28,k*5)))
+        var drops:[JuiceDrop]=[]
+        for n in 0..<count {
+            let angle=ink.range(0,Double.pi*2),reach=r*ink.range(n%4==0 ? 2.4 : 0.85,n%4==0 ? 5 : 3.2)
+            drops.append(JuiceDrop(offset:V(x:cos(angle)*reach,y:sin(angle)*reach*0.7),radius:r*ink.range(0.045,0.19),flight:ink.range(0.4,0.82)))
+        }
+        splats.append(JuiceSplat(bugID:b.id,p:b.p,radius:r,angle:b.angle,crushed:crushed,drops:drops))
+        if splats.count>96 {splats.removeFirst(splats.count-96)}
+    }
     func sweep(_ p:V) {
         let bodies=corpses.filter{bodyHit($0.bug,p,padding:65,corpse:true)}.map{$0.bug}
         let shells=eggs.filter{$0.p.distance(p)<70}
         let outsiders=invaders.filter{$0.dead && $0.p.distance(p)<120}
         let ids=Set(bodies.map{$0.id}),eggIDs=Set(shells.map{$0.id}),outsiderIDs=Set(outsiders.map{$0.id})
+        let stains=splats.filter{ids.contains($0.bugID) || $0.hit(p,padding:65)}
+        let stainIDs=Set(stains.map{$0.bugID});splats.removeAll{stainIDs.contains($0.bugID)}
         corpses.removeAll{ids.contains($0.bug.id)};eggs.removeAll{eggIDs.contains($0.id)};invaders.removeAll{outsiderIDs.contains($0.id)}
         if p.distance(V(x:width/2,y:height-50))<70 {archivedCorpses=0}
-        sweeps.append(Sweep(p:p,bodies:bodies,eggs:shells,invaders:outsiders))
+        sweeps.append(Sweep(p:p,bodies:bodies,eggs:shells,invaders:outsiders,stains:stains))
         if sweeps.count>8 {sweeps.removeFirst(sweeps.count-8)}
         sweepAnchor=p;burst(p,kind:4,count:12)
-        say("扫走尸体和卵，活虫留下。",force:true)
+        say("扫走尸体、汁液和卵。",force:true)
     }
     @discardableResult func summonInvader(_ kind:InvaderKind?=nil)->Bool {
         guard !invaders.contains(where:{!$0.dead}) else {say("外敌还在桌面上。",force:true);return false}
@@ -525,7 +567,7 @@ final class World {
         let dead=bugs.filter{$0.health<=0}
         if !dead.isEmpty {
             ensureDay()
-            for var b in dead {if b.cargo>0 {_ = addFood(b.p,portions:b.cargo,announce:false)};b.cargo=0;b.fightTime=0;corpses.append(Corpse(bug:b));if b.species == .roach {reports[reports.count-1].roachLost += 1}else{reports[reports.count-1].antLost += 1}}
+            for var b in dead {if b.cargo>0 {_ = addFood(b.p,portions:b.cargo,announce:false)};b.cargo=0;b.fightTime=0;corpses.append(Corpse(bug:b));spillJuice(b,crushed:false);if b.species == .roach {reports[reports.count-1].roachLost += 1}else{reports[reports.count-1].antLost += 1}}
             combatDeaths += dead.count
             let ids=Set(dead.map{$0.id});bugs.removeAll{ids.contains($0.id)}
             record("外敌袭击造成\(dead.count)只伤亡")
@@ -604,7 +646,7 @@ final class World {
         for victim in victims {
             if victim.cargo > 0 { _ = addFood(victim.p,portions:victim.cargo,announce:false) }
             var body = victim; body.cargo = 0; body.speed = 0; body.flipped = 0
-            corpses.append(Corpse(bug:body))
+            corpses.append(Corpse(bug:body));spillJuice(body,crushed:true)
             if grabbedID == victim.id { grabbedID = nil }
         }
         let ids = Set(victims.map{$0.id})
@@ -729,7 +771,7 @@ final class World {
         for var b in victims {
             if b.cargo>0 {_ = addFood(b.p,portions:b.cargo,announce:false)}
             b.cargo=0;b.speed=0;b.fightTime=0;b.opponentID=nil;b.fightTarget=nil;b.hitTime=nil
-            corpses.append(Corpse(bug:b));combatDeaths += 1
+            corpses.append(Corpse(bug:b));spillJuice(b,crushed:false);combatDeaths += 1
             ensureDay();if b.species == .roach {reports[reports.count-1].roachLost += 1} else {reports[reports.count-1].antLost += 1}
         }
         let dead=Set(victims.map{$0.id});bugs.removeAll{dead.contains($0.id)}
@@ -748,6 +790,12 @@ final class World {
         for i in invaders.indices {invaders[i].p=safe(V(x:invaders[i].p.x*sx,y:invaders[i].p.y*sy))}
         for i in eggs.indices { eggs[i].p = safe(V(x:eggs[i].p.x*sx,y:eggs[i].p.y*sy)) }
         for i in corpses.indices { corpses[i].bug.p = safe(V(x:corpses[i].bug.p.x*sx,y:corpses[i].bug.p.y*sy)) }
+        let inkScale=min(sx,sy)
+        for i in splats.indices {
+            splats[i].p=safe(V(x:splats[i].p.x*sx,y:splats[i].p.y*sy))
+            splats[i].radius=min(240,splats[i].radius*inkScale)
+            for j in splats[i].drops.indices {splats[i].drops[j].offset=splats[i].drops[j].offset*inkScale;splats[i].drops[j].radius=min(80,splats[i].drops[j].radius*inkScale)}
+        }
     }
     func update(_ delta: Double) {
         guard !paused else { return }
@@ -755,6 +803,7 @@ final class World {
         dateCheck += dt
         if dateCheck>1 {ensureDay();dateCheck=0}
         clock += dt; notice.time -= dt; eventCooldown -= dt; slapTime = max(0,slapTime-dt)
+        for i in splats.indices {splats[i].age=min(4,splats[i].age+dt)}
         for i in sweeps.indices {sweeps[i].age += dt};sweeps.removeAll{$0.age >= $0.duration}
         for i in fights.indices {fights[i].age += dt}
         fights.removeAll{$0.age >= $0.duration}
@@ -1192,5 +1241,48 @@ func runWorldTests() {
     var forms=Set<Int>();var formBug=Bug(id:3,species:.ant,p:.zero)
     for stage in [(0.1,0.0),(0.6,0.0),(1.0,0.1),(1.0,0.5),(1.0,1.0)] {formBug.growth=stage.0;formBug.bulk=stage.1;forms.insert(formBug.morph)}
     check(forms==Set(0...4),"five distinct growth forms from hatchling to giant")
+    let goo=World(width:1440,height:900,seed:32);goo.bugs=[Bug(id:500,species:.roach,p:V(x:500,y:400))];goo.bugSerial=501;goo.eggs=[];goo.foods=[]
+    goo.swat(V(x:500,y:400))
+    check(goo.bugs.isEmpty && goo.corpses.count==1 && goo.splats.count==1,"swatting a real roach creates one corpse and one juice spill")
+    check(goo.splats[0].crushed && goo.splats[0].drops.count>=32,"slipper kill emits many liquid droplets")
+    let spill=goo.splats[0],drop=spill.drops[0]
+    check(spill.offset(of:drop,at:0) == .zero && spill.offset(of:drop,at:2)==drop.offset,"droplets fly from impact and land at persistent stain positions")
+    goo.slapTime=0;goo.swat(V(x:500,y:400))
+    check(goo.splats.count==1,"already dead roaches cannot be farmed for duplicate splashes")
+    let beforeInk=goo.random.value;var big=Bug(id:502,species:.roach,p:V(x:900,y:400));big.bulk=1;big.shownBulk=1
+    goo.spillJuice(big,crushed:true)
+    check(goo.random.value==beforeInk,"splash visuals do not perturb ecological randomness")
+    check(goo.splats[1].radius>spill.radius*2 && goo.splats[1].drops.count>spill.drops.count,"giant roaches release a larger and denser splash")
+    goo.paused=true;goo.update(0.05)
+    check(goo.splats[0].age==0,"pause freezes flying liquid")
+    goo.paused=false;for _ in 0..<40 {goo.update(0.05)}
+    check(goo.splats.count==2 && goo.splats[0].age>1,"juice remains on the desktop after the flight animation")
+    let dirtySave=try! goo.saveData();let afterGoo=World(width:1440,height:900,seed:1);try! afterGoo.restore(dirtySave)
+    check(afterGoo.splats.count==2 && afterGoo.splats[0].drops.count==spill.drops.count,"save round-trip preserves puddles and landing droplets")
+    goo.splats[0].age=0.05;try! afterGoo.restore(goo.saveData())
+    check(afterGoo.splats[0].age>=1,"loading a save never replays the death explosion")
+    var preJuice=try! JSONSerialization.jsonObject(with:dirtySave) as! [String:Any];preJuice.removeValue(forKey:"splats")
+    try! afterGoo.restore(JSONSerialization.data(withJSONObject:preJuice))
+    check(afterGoo.splats.isEmpty && afterGoo.corpses.count==1,"old Mac saves without juice fields still restore their corpses")
+    try! afterGoo.restore(dirtySave);afterGoo.sweep(spill.p)
+    check(afterGoo.corpses.isEmpty && !afterGoo.splats.contains{$0.bugID==500} && afterGoo.sweeps.last!.stains.contains{$0.bugID==500},"broom sweeps corpse and its juice into the same cleaning animation")
+    let far=goo.splats[1],spot=far.drops.max{$0.offset.length<$1.offset.length}!.offset
+    let floorPoint=far.p+V(x:spot.x*cos(far.angle)-spot.y*sin(far.angle),y:spot.x*sin(far.angle)+spot.y*cos(far.angle))
+    check(far.hit(floorPoint,padding:1),"remote landing droplets have cleanable hit regions")
+    try! afterGoo.restore(dirtySave);afterGoo.sweep(floorPoint)
+    check(!afterGoo.splats.contains{$0.bugID==502},"broom also removes the outer splattered drops")
+    try! afterGoo.restore(dirtySave);let oldInkRadius=afterGoo.splats[0].radius;afterGoo.resize(width:2880,height:1800)
+    check(abs(afterGoo.splats[0].radius-oldInkRadius*2)<0.001 && afterGoo.splats[0].p==spill.p*2,"display resize keeps stains aligned and proportionate")
+    let emptyHit=World(width:1000,height:700,seed:8);emptyHit.bugs=[];emptyHit.swat(V(x:500,y:350))
+    check(emptyHit.splats.isEmpty,"a missed slipper slap creates no fake insect juice")
+    emptyHit.slapTime=0;emptyHit.bugs=[Bug(id:600,species:.ant,p:V(x:500,y:350))];emptyHit.swat(V(x:500,y:350))
+    check(emptyHit.splats.isEmpty && emptyHit.corpses.count==1,"ant deaths preserve their existing presentation")
+    for n in 0..<130 {emptyHit.spillJuice(Bug(id:1000+n,species:.roach,p:V(x:500,y:350)),crushed:true)}
+    check(emptyHit.splats.count==96 && emptyHit.splats.allSatisfy{$0.drops.count<=64},"heavy repeated deaths keep liquid rendering memory bounded")
+    emptyHit.startRound();check(emptyHit.splats.isEmpty,"starting a fresh round clears the prior round's liquid")
+    var badJuice=try! JSONSerialization.jsonObject(with:dirtySave) as! [String:Any]
+    var badSplats=badJuice["splats"] as! [[String:Any]];badSplats[0]["radius"] = -1;badJuice["splats"]=badSplats
+    var rejectedInk=false;do {try afterGoo.restore(JSONSerialization.data(withJSONObject:badJuice))}catch{rejectedInk=true}
+    check(rejectedInk,"invalid saved splash geometry is rejected before drawing")
     print("\(checks) checks passed")
 }

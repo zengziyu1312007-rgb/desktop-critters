@@ -308,6 +308,59 @@ func drawNest(_ c: CGContext,at p: V,roach: Bool,score: Int) {
     c.restoreGState()
 }
 
+func drawJuice(_ c:CGContext,_ s:JuiceSplat,airborne:Bool=false,alpha:Double=1) {
+    c.saveGState();c.translateBy(x:s.p.x,y:s.p.y);c.rotate(by:s.angle)
+    let r=s.radius,spread=min(1,s.age/0.23),wet=1-min(1,s.age/4)*0.25
+    if !airborne {
+        // Soft edge, irregular sticky body and a lighter wet interior.
+        let pool=CGMutablePath();var points:[CGPoint]=[]
+        for n in 0..<28 {
+            let a=Double(n)*Double.pi*2/28
+            let wobble=0.92+sin(Double(n)*2.3+Double(s.bugID%17))*0.14
+            points.append(CGPoint(x:cos(a)*r*1.75*wobble,y:sin(a)*r*0.76*wobble))
+        }
+        let first=points[0],last=points.last!
+        pool.move(to:CGPoint(x:(first.x+last.x)/2,y:(first.y+last.y)/2))
+        for n in points.indices {let p=points[n],next=points[(n+1)%points.count];pool.addQuadCurve(to:CGPoint(x:(p.x+next.x)/2,y:(p.y+next.y)/2),control:p)}
+        pool.closeSubpath()
+        c.saveGState();let k=0.28+spread*0.72;c.scaleBy(x:k,y:k)
+        c.setAlpha(alpha*0.24);c.setFillColor(NSColor(hex:0x3A2815).cgColor);c.addPath(pool);c.fillPath()
+        c.setAlpha(alpha*0.9);c.scaleBy(x:0.97,y:0.94);c.addPath(pool);c.clip()
+        if let liquid=CGGradient(colorsSpace:CGColorSpaceCreateDeviceRGB(),colors:[NSColor(hex:0xD8C57F).cgColor,NSColor(hex:0xAE8D45).cgColor,NSColor(hex:0x755324).cgColor] as CFArray,locations:[0,0.58,1]) {
+            c.saveGState();c.scaleBy(x:1.9,y:0.8)
+            c.drawRadialGradient(liquid,startCenter:CGPoint(x:-r*0.1,y:-r*0.2),startRadius:0,endCenter:.zero,endRadius:r,options:[.drawsAfterEndLocation]);c.restoreGState()
+        }
+        for n in 0..<5 {
+            let a=Double(n)*2.4+Double(s.bugID%9),size=r*(0.035+Double(n%3)*0.025)
+            shadedOval(c,CGRect(x:cos(a)*r*1.1-size,y:sin(a)*r*0.5-size*0.5,width:size*2,height:size),NSColor(hex:0xEEDBA0,alpha:0.65),NSColor(hex:0x927332,alpha:0.4))
+        }
+        c.setAlpha(alpha*0.76*wet)
+        let reflection=CGMutablePath();reflection.move(to:CGPoint(x:-r*1.1,y:-r*0.31));reflection.addCurve(to:CGPoint(x:-r*0.12,y:-r*0.42),control1:CGPoint(x:-r*0.8,y:-r*0.5),control2:CGPoint(x:-r*0.48,y:-r*0.44))
+        c.addPath(reflection);c.setStrokeColor(NSColor(hex:0xFFF0C7).cgColor);c.setLineWidth(max(0.7,r*0.036));c.strokePath()
+        c.restoreGState()
+    }
+    for (n,d) in s.drops.enumerated() {
+        let t=min(1,max(0,s.age/d.flight))
+        if airborne != (t<1) {continue}
+        let p=s.offset(of:d,at:s.age),k=d.radius*(0.3+min(1,t*4)*0.7)
+        c.saveGState();c.translateBy(x:p.x,y:p.y);c.rotate(by:atan2(d.offset.y,d.offset.x))
+        let elongation=t<1 ? 1.8 : 1.15
+        if airborne && t<0.65 && n%5==0 {
+            c.setAlpha(alpha*(1-t)*0.6);line(c,[CGPoint(x:-k*4,y:0),.zero],NSColor(hex:0xA18340),k*0.5)
+        }
+        let blob=CGMutablePath();blob.move(to:CGPoint(x:-k*(airborne ? 3.4 : 1.9),y:0))
+        blob.addCurve(to:CGPoint(x:k*elongation,y:0),control1:CGPoint(x:-k*0.6,y:-k*0.4),control2:CGPoint(x:k*0.6,y:-k*1.4))
+        blob.addCurve(to:CGPoint(x:-k*(airborne ? 3.4 : 1.9),y:0),control1:CGPoint(x:k*1.3,y:k*1.5),control2:CGPoint(x:-k*0.7,y:k*0.45));blob.closeSubpath()
+        c.setAlpha(alpha*0.92);c.addPath(blob);c.clip()
+        if let liquid=CGGradient(colorsSpace:CGColorSpaceCreateDeviceRGB(),colors:[NSColor(hex:0xE5D393).cgColor,NSColor(hex:0xAE8E43).cgColor,NSColor(hex:0x72511F).cgColor] as CFArray,locations:[0,0.4,1]) {
+            c.drawLinearGradient(liquid,start:CGPoint(x:0,y:-k),end:CGPoint(x:k*0.3,y:k),options:[.drawsBeforeStartLocation,.drawsAfterEndLocation])
+        }
+        c.setAlpha(alpha*wet*0.9);ellipse(c,CGRect(x:-k*0.1,y:-k*0.58,width:k*0.8,height:k*0.26),NSColor(hex:0xFFF1C2))
+        c.restoreGState()
+    }
+    c.restoreGState()
+}
+
 func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
     c.saveGState()
     c.setAllowsAntialiasing(true)
@@ -329,11 +382,14 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
         Creatures.egg(c,species:egg.species)
         c.restoreGState()
     }
+    for stain in world.splats {drawJuice(c,stain)}
     for corpse in world.corpses {
         let b = corpse.bug
         c.saveGState(); c.translateBy(x:b.p.x,y:b.p.y); c.rotate(by:b.angle)
-        c.scaleBy(x:world.scale(for:b),y:world.scale(for:b)*0.55)
-        Creatures.bug(c,b,alpha:0.55,dead:true)
+        let crushed=world.splats.first{$0.bugID==b.id && $0.crushed}
+        let press=crushed.map{max(0,1-$0.age/0.22)} ?? 0
+        c.scaleBy(x:world.scale(for:b)*(1+press*0.28),y:world.scale(for:b)*(0.55-press*0.28))
+        Creatures.bug(c,b,alpha:crushed == nil ? 0.55 : 0.78,dead:true)
         c.restoreGState()
     }
     if world.archivedCorpses > 0 {
@@ -375,6 +431,11 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
     }
     for sweep in world.sweeps {
         let t=min(1,sweep.age/sweep.duration),ease=1-pow(1-t,3)
+        for var stain in sweep.stains {
+            stain.p=stain.p+V(x:ease*90,y: -ease*35);stain.age=max(1,stain.age)
+            c.saveGState();c.translateBy(x:stain.p.x,y:stain.p.y);c.scaleBy(x:1-ease*0.6,y:1-ease*0.85);c.translateBy(x: -stain.p.x,y: -stain.p.y)
+            drawJuice(c,stain,alpha:1-t);c.restoreGState()
+        }
         for b in sweep.bodies {
             c.saveGState();c.translateBy(x:b.p.x+ease*90,y:b.p.y-ease*35);c.rotate(by:b.angle+ease*1.1)
             c.scaleBy(x:world.scale(for:b)*(1-ease*0.75),y:world.scale(for:b)*0.55*(1-ease*0.75))
@@ -421,6 +482,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
         }
         c.restoreGState()
     }
+    for stain in world.splats {drawJuice(c,stain,airborne:true)}
     for p in world.puffs {
         let color = p.kind == 4 ? NSColor(hex:0xB7A181) : (p.kind == 3 ? Ink.mint : (p.kind == 1 ? NSColor.white : Ink.orange))
         ellipse(c,CGRect(x:p.p.x-2,y:p.p.y-2,width:4,height:4),color.withAlphaComponent(p.life/p.lifetime))
