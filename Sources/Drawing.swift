@@ -192,6 +192,7 @@ enum Creatures {
         c.restoreGState()
     }
     static func bug(_ c:CGContext,_ b:Bug,alpha:Double=1,dead:Bool=false) {
+        if CreatureFrames.draw(c,b,alpha:alpha,dead:dead) {return}
         if b.species == .ant {
             ant(c,phase:dead ? 0 : b.phase,alpha:alpha,morph:b.morph)
             return
