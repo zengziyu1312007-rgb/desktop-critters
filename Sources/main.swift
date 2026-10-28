@@ -100,6 +100,8 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
             guard event.window === self.overlay || event.window === self.panel else {return event}
             if event.keyCode==53 {self.toCompanion();return nil}
             if event.modifierFlags.contains(.command),event.charactersIgnoringModifiers=="q" {NSApp.terminate(nil);return nil}
+            if event.characters=="0",!event.modifierFlags.contains(.command) {self.selectTool(.spray);return nil}
+            if event.characters=="8",!event.modifierFlags.contains(.command) {self.scareRoaches();return nil}
             if let s=event.characters,let n=Int(s),let tool=Tool(rawValue:n-1),!event.modifierFlags.contains(.command) {self.selectTool(tool);return nil}
             if self.world.interactive {
                 if event.keyCode==36 {self.keyboardAction();return nil}
@@ -137,7 +139,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         status.button?.toolTip="桌面有点脏 · 打开控制面板"
         status.button?.setAccessibilityLabel("桌宠 · 打开控制面板")
         let menu=NSMenu()
-        let items:[(String,Selector,String)] = [("打开控制面板",#selector(showPanel),""),("角色换装与自定义图片",#selector(showCharacters),""),("收起控制面板",#selector(hidePanel),""),("今日战报",#selector(showReport),""),("竖屏取景 / 全桌面",#selector(toggleFrame),""),("生命速度 1 / 2 / 4",#selector(changeRate),""),("开一局",#selector(startRound),""),("回到工作 · 鼠标穿透",#selector(toCompanion),""),("暂停 / 继续",#selector(togglePause),""),("隐藏 / 显示全部",#selector(toggleHidden),""),("照片与素材来源",#selector(showCredits),"")]
+        let items:[(String,Selector,String)] = [("打开控制面板",#selector(showPanel),""),("角色换装与自定义图片",#selector(showCharacters),""),("收起控制面板",#selector(hidePanel),""),("今日战报",#selector(showReport),""),("惊飞蟑螂",#selector(scareRoaches),""),("竖屏取景 / 全桌面",#selector(toggleFrame),""),("生命速度 1 / 2 / 4",#selector(changeRate),""),("开一局",#selector(startRound),""),("回到工作 · 鼠标穿透",#selector(toCompanion),""),("暂停 / 继续",#selector(togglePause),""),("隐藏 / 显示全部",#selector(toggleHidden),""),("照片与素材来源",#selector(showCredits),"")]
         for (title,action,key) in items {let item=NSMenuItem(title:title,action:action,keyEquivalent:key);item.target=self;menu.addItem(item)}
         menu.addItem(.separator())
         let quit=NSMenuItem(title:"退出桌面有点脏",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q"); menu.addItem(quit)
@@ -163,6 +165,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         arena.displayIfNeeded()
         panelView.refresh()
     }
+    @objc func scareRoaches() {_ = world.scareRoaches();arena.needsDisplay=true;panelView.refresh()}
     @objc func startRound() {
         hidden=false; overlay.orderFrontRegardless(); panel.orderFrontRegardless()
         world.startRound(); updateAvoid(); applyInput(); NSApp.activate(ignoringOtherApps:true)
@@ -176,7 +179,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         hidden=false; overlay.orderFrontRegardless(); panel.orderFrontRegardless()
         world.release(); world.tool=tool; world.watchedID=nil
         updateAvoid()
-        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体、汁液和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放蟑螂卵，暂停时也可以摆放。","点桌面放蚂蚁卵，暂停时也可以摆放。"][tool.rawValue],force:true)
+        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体、汁液和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放蟑螂卵，暂停时也可以摆放。","点桌面放蚂蚁卵，暂停时也可以摆放。","","点文件夹图标，标记背后的藏卵处。再点同位置取消。","点击或拖动喷药，覆盖到的虫会死亡，尸体可清扫。"][tool.rawValue],force:true)
         applyInput(); NSApp.activate(ignoringOtherApps:true)
     }
     @objc func toggleFrame() {
@@ -344,6 +347,7 @@ if arguments.contains("--character-self-test") {_ = NSApplication.shared;runChar
 if let index=arguments.firstIndex(of:"--render-characters"),arguments.count>index+1 {_ = NSApplication.shared;renderCharacters(to:arguments[index+1]);exit(0)}
 if arguments.contains("--self-test") {runWorldTests();exit(0)}
 if let index=arguments.firstIndex(of:"--render-preview"),arguments.count>index+1 {_ = NSApplication.shared;renderPreview(to:arguments[index+1]);exit(0)}
+if let i=arguments.firstIndex(of:"--render-feature-checks"),arguments.count>i+1 {_ = NSApplication.shared;renderFeatureChecks(to:arguments[i+1]);exit(0)}
 let app=NSApplication.shared
 app.setActivationPolicy(.regular)
 let delegate=AppDelegate();app.delegate=delegate

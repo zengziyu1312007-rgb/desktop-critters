@@ -1,7 +1,7 @@
 name: Windows build and checks
 on:
   push:
-    branches: [main, codex/windows-port, codex/character-library]
+    branches: [main, codex/windows-port, codex/character-library, codex/roach-flight-visitors]
     paths: ['windows/**', 'Resources/Characters/**', 'tests/**', 'docs/platform.js', '.github/workflows/windows.yml']
   workflow_dispatch:
 permissions:

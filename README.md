@@ -1,8 +1,8 @@
 # 桌面有点脏 · Desktop Critters
 
-蟑螂和蚂蚁住进你的 Mac 桌面。投食、繁殖、围攻、巨化，再用拖鞋和扫把收拾战场。
+蟑螂和蚂蚁住进你的电脑桌面。投食、繁殖、围攻、巨化，再用拖鞋和扫把收拾战场。
 
-同一个仓库维护两套原生桌宠：**Mac v0.7.3**（Swift / AppKit）和 **Windows v0.8.0**（C# / WPF）。
+同一个仓库维护两套原生桌宠：**Mac v0.9.0**（Swift / AppKit）和 **Windows v0.9.0**（C# / WPF）。
 
 ## 下载与开启
 
@@ -10,12 +10,12 @@
 
 | 平台 | 下载 | 兼容范围 |
 | --- | --- | --- |
-| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.8.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
-| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.8.0/DesktopCritters-v0.7.3-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
+| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
+| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
 
 两端安装包都不要求另装开发环境。Windows运行安装包后从开始菜单打开；Mac解压后双击“桌面有点脏.app”。安装仍需用户确认。
 
-Mac下载包与原v0.7.3逐字节相同，现有安装、Bundle ID和存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
+v0.9.0同步加入蟑螂飞行、蜈蚣／蛇／老鼠、可见产卵与文件夹藏卵、杀虫剂；旧版包继续保留。Mac的Bundle ID和原存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
 
 当前两个平台都尚未进行商业证书签名／公证，系统可能显示发布者提示。首版Windows的多屏、部分缩放与实际鼠标体验仍待更多真机反馈。
 
@@ -38,10 +38,15 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 | 喂给虫子 | 选择食物后点虫体；实际吃到的一口会推动成长，进食有冷却 |
 | 搬个家 | 按住虫子拖动到其他地方 |
 | 拍死 | 用拖鞋拍击；蟑螂挤压后爆出黄褐色汁液，留下污渍和尸体 |
+| 杀虫剂 · 0 | 点击或拖动喷雾，覆盖到的蟑螂／蚂蚁死亡，留下尸体与污渍；卵保留，扫把负责清理 |
+| 惊飞蟑螂 · 8 | 成蟑展开翅膀绕飞后落地；自然也会偶尔起飞，附近拖鞋会惊飞幸存者 |
+| 藏卵处 · 9 | 选择工具后点击桌面文件夹图标；附近成虫会在该位置产卵，卵躲到图标后，孵化幼体从边缘出来；再点同处取消 |
 | 扫把 | 点按或拖动，扫走尸体、汁液污渍、卵和外敌残骸 |
 | 放卵 | 手动放下蟑螂卵鞘或蚁卵，等待孵化 |
 | 今日战报 | 查看运行期间的出生、伤亡、成长和外交事件，也可手动停火或建交 |
-| 引来蜘蛛／甲虫 | 触发蜘蛛缠丝或甲虫冲撞抢粮，每次最多一只活外敌 |
+| 引来外敌 | 触发蜘蛛缠丝、甲虫冲撞、蜈蚣连续追咬、蛇蓄势单点扑咬或老鼠抢粮冲散，每次最多一只活外敌 |
+
+产卵时成虫停住，腹部轻抬，卵从尾部排出，完成后才开始孵化。藏卵处由用户手动指向文件夹图标，程序不读取或改动文件；观察工具可临时查看藏住的卵。移动桌面文件夹图标后，需在新位置重新标记。
 
 有五个成长阶段，中小型虫占多数；每阵营同时最多一只顶级巨虫。最大巨蟑包含腿和触角的标定外接范围约占四分之一活动区，最大巨蚁虫体长约为巨蟑的一半。普通零食维持普通体型，后续巨化需要大餐和空余名额。
 
@@ -54,6 +59,7 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 | 按键 | 操作 |
 | --- | --- |
 | 1 / 2 / 3 / 4 | 投食 / 搬个家 / 拍死 / 扫把 |
+| 0 / 8 / 9 | 杀虫剂 / 惊飞蟑螂 / 标记藏卵处 |
 | 5 / 6 / 7 | 观察 / 放蟑螂卵 / 放蚂蚁卵 |
 | Tab | 切换选择虫或卵 |
 | Return | 对当前目标或鼠标位置使用工具 |
@@ -63,7 +69,7 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 
 ## 从源码构建
 
-Windows构建见 [windows/README.md](windows/README.md)，核心有独立的72项行为检查；下方是Mac构建：
+Windows构建见 [windows/README.md](windows/README.md)，核心有独立行为检查；下方是Mac构建：
 
 安装 Xcode Command Line Tools，然后在仓库根目录运行：
 
@@ -82,7 +88,7 @@ docs/                # 统一下载页
 ./dist/桌面有点脏.app/Contents/MacOS/DesktopCritters --self-test
 ```
 
-当前包含 120 项行为检查，覆盖取食、生命周期、人口名额、体型比例、拍击爆浆、汁液持久化与清扫、外交、外敌与存档恢复。长时间GUI性能和Intel Mac尚未验证；Windows另有核心与原生窗口检查，见其构建说明。
+当前包含核心行为与新增功能检查，覆盖取食、生命周期、人口名额、体型比例、拍击爆浆、汁液持久化与清扫、外交、外敌与存档恢复。长时间GUI性能和Intel Mac尚未验证；Windows另有核心与原生窗口检查，见其构建说明。
 
 ## 本机存档
 

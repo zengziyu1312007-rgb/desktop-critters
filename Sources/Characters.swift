@@ -96,6 +96,13 @@ final class CharacterLibrary {
         guard let source=CGImageSourceCreateWithURL(url as CFURL,nil),let properties=CGImageSourceCopyPropertiesAtIndex(source,0,nil) as? [CFString:Any],let w=properties[kCGImagePropertyPixelWidth] as? Int,let h=properties[kCGImagePropertyPixelHeight] as? Int,w>0,h>0,w<=8192,h<=8192,w*h<=32_000_000 else {throw CharacterError.invalid("图片无法读取，或尺寸过大。请使用PNG、JPEG或GIF图片。")}
         let options:[CFString:Any]=[kCGImageSourceCreateThumbnailFromImageAlways:true,kCGImageSourceThumbnailMaxPixelSize:1024,kCGImageSourceCreateThumbnailWithTransform:true]
         guard let cg=CGImageSourceCreateThumbnailAtIndex(source,0,options as CFDictionary) else {throw CharacterError.invalid("这张图片无法解码。")}
+        var pixels=[UInt8](repeating:0,count:cg.width*cg.height*4)
+        let visible=pixels.withUnsafeMutableBytes { raw -> Bool in
+            guard let c=CGContext(data:raw.baseAddress,width:cg.width,height:cg.height,bitsPerComponent:8,bytesPerRow:cg.width*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue) else{return false}
+            c.draw(cg,in:CGRect(x:0,y:0,width:cg.width,height:cg.height))
+            return stride(from:3,to:raw.count,by:4).contains{raw[$0]>8}
+        }
+        guard visible else {throw CharacterError.invalid("图片完全透明，请选一张能看见主体的图片。")}
         let id="custom-"+UUID().uuidString.lowercased(),target=folder.appendingPathComponent("CustomCharacters")
         try FileManager.default.createDirectory(at:target,withIntermediateDirectories:true)
         let png=target.appendingPathComponent(id+".png")
@@ -240,7 +247,7 @@ final class CharacterGallery:NSWindowController {
         let original=ActionButton("恢复原蚂蚁",frame:CGRect(x:276,y:460,width:166,height:42)){[weak self] in self?.select("ant")}
         original.autoresizingMask=[.minYMargin];root.addSubview(original)
         let play=ActionButton("表演一下",frame:CGRect(x:454,y:460,width:200,height:42)){[weak self] in
-            guard let self=self else{return};self.world.paused=false;CharacterLibrary.shared.perform(in:self.world);self.applied?();self.status.stringValue="看桌面："+CharacterLibrary.shared.displayName+"登场！观察工具点它，也会回应。"
+            guard let self=self else{return};guard self.world.bugs.contains(where:{$0.species == .ant}) else {self.status.stringValue="桌面还没有活着的小队成员。先放几枚蚂蚁卵，等它们孵化。";return};self.world.paused=false;CharacterLibrary.shared.perform(in:self.world);self.applied?();self.status.stringValue="看桌面："+CharacterLibrary.shared.displayName+"登场！观察工具点它，也会回应。"
         };play.autoresizingMask=[.minYMargin];root.addSubview(play)
         let help=NSTextField(labelWithString:"PNG透明图效果最好；也支持JPEG和GIF首帧，20MB以内。\n图片保存在这台电脑。切换立即生效，当前生态继续成长。")
         help.frame=CGRect(x:27,y:520,width:625,height:42);help.font=NSFont.systemFont(ofSize:11);help.textColor=Ink.muted;help.autoresizingMask=[.minYMargin];root.addSubview(help)
@@ -271,4 +278,6 @@ final class CharacterGallery:NSWindowController {
         }
     }
 }
-final class FlippedCharacterView:NSView {override var isFlipped:Bool {true}}
+final class FlippedCharacterView:NSView {override var isFlipped:Bool {true}
+    override func draw(_ dirtyRect:NSRect){Ink.cream.setFill();NSBezierPath(rect:bounds).fill()}
+}
