@@ -43,7 +43,7 @@ final class ControlView: NSView {
     var onStart:(() -> Void)?; var onCompanion:(() -> Void)?; var onPause:(() -> Void)?
     var onHide:(() -> Void)?; var onTool:((Tool)->Void)?; var onSound:(()->Void)?; var onQuit:(()->Void)?
     var onFrame:(()->Void)?; var onRate:(()->Void)?; var onReport:(()->Void)?
-    var onCharacters:(()->Void)?;var characterButton:ActionButton!
+    var onCharacters:((Species)->Void)?;var characterButtons:[ActionButton]=[]
     var snacks:[ActionButton]=[]
     var frameButton:ActionButton!; var rateButton:ActionButton!
     var soundEnabled = false
@@ -76,8 +76,8 @@ final class ControlView: NSView {
         addSubview(frameButton)
         rateButton=ActionButton("生命 ×1",frame:CGRect(x:214,y:582,width:88,height:36)){[weak self] in self?.onRate?()}
         addSubview(rateButton)
-        let roachEgg=ActionButton("放蟑螂卵 · 6",frame:CGRect(x:22,y:656,width:133,height:38)){[weak self] in self?.onTool?(.roachEgg)}
-        let antEgg=ActionButton("放蚂蚁卵 · 7",frame:CGRect(x:169,y:656,width:133,height:38)){[weak self] in self?.onTool?(.antEgg)}
+        let roachEgg=ActionButton("放左队卵 · 6",frame:CGRect(x:22,y:656,width:133,height:38)){[weak self] in self?.onTool?(.roachEgg)}
+        let antEgg=ActionButton("放右队卵 · 7",frame:CGRect(x:169,y:656,width:133,height:38)){[weak self] in self?.onTool?(.antEgg)}
         addSubview(roachEgg); addSubview(antEgg); tools.append(roachEgg); tools.append(antEgg)
         for snack in Snack.allCases {
             let b=ActionButton(snack.title,frame:CGRect(x:22+(snack.rawValue%3)*96,y:326+(snack.rawValue/3)*30,width:88,height:26)){[weak self] in
@@ -95,13 +95,18 @@ final class ControlView: NSView {
             guard let self=self,let index=visitor?.indexOfSelectedItem,index>=0 else {return}
             _ = self.world.summonInvader(InvaderKind.allCases[index]);self.refresh()
         };addSubview(summon)
-        characterButton=ActionButton("角色换装",frame:CGRect(x:178,y:164,width:116,height:23)){[weak self] in self?.onCharacters?()}
-        addSubview(characterButton)
+        for (i,team) in [Species.roach,.ant].enumerated() {
+            let b=ActionButton("选宠物",frame:CGRect(x:30+i*147,y:164,width:116,height:23)){[weak self] in self?.onCharacters?(team)}
+            addSubview(b);characterButtons.append(b)
+        }
         refresh()
     }
     required init?(coder:NSCoder) { fatalError() }
     func refresh() {
-        characterButton?.title=CharacterLibrary.shared.displayName+" · 换装 ›";characterButton?.needsDisplay=true
+        for (i,team) in [Species.roach,.ant].enumerated() {
+            let b=characterButtons[i];b.title=(i==0 ? "左 · " : "右 · ")+String(CharacterLibrary.shared.name(for:team).prefix(6))+" ›"
+            b.setAccessibilityLabel((i==0 ? "选择左队宠物，当前" : "选择右队宠物，当前")+CharacterLibrary.shared.name(for:team));b.needsDisplay=true
+        }
         startButton.title = world.mode == .battle ? "进行中  ·  点击重新开局" : (world.mode == .result ? "再来一局" : "开一局  ·  2 分 30 秒")
         for (i,b) in snacks.enumerated() {b.selected=i==world.selectedSnack.rawValue;b.needsDisplay=true}
         tools[0].title="投食"
@@ -130,11 +135,12 @@ final class ControlView: NSView {
         // Two camps sit on contrasting, quiet fields. Illustrations match the actual pets.
         fillRound(CGRect(x:22,y:116,width:133,height:121),NSColor(hex:0xF0E0CE),15)
         fillRound(CGRect(x:169,y:116,width:133,height:121),NSColor(hex:0xDFE9DD),15)
-        c.saveGState(); c.translateBy(x:78,y:141); c.rotate(by:0.05); Creatures.roach(c,phase:1.1,scale:0.56); c.restoreGState()
-        c.saveGState(); c.translateBy(x:232,y:145)
-        if CharacterLibrary.shared.enabled {c.scaleBy(x:1.45,y:1.45);CharacterArt.draw(c,bug:Bug(id:0,species:.ant,p:.zero),clock:0)} else {c.rotate(by:-0.18);Creatures.ant(c,phase:1.5,scale:1.05)}
-        c.restoreGState()
-        label("蟑螂帮",35,166,12,NSColor(hex:0x805538),.semibold,width:106)
+        for (i,team) in [Species.roach,.ant].enumerated() {
+            if let image=CharacterLibrary.shared.image(for:CharacterLibrary.shared.selected(for:team)) {
+                let k=min(115/image.size.width,48/image.size.height)
+                image.draw(in:CGRect(x:Double(88+i*147)-image.size.width*k/2,y:118,width:image.size.width*k,height:image.size.height*k),from:.zero,operation:.sourceOver,fraction:1,respectFlipped:true,hints:nil)
+            }
+        }
         label("\(world.roachFood)",33,184,30,Ink.forest,.bold,width:70)
         label("\(world.antFood)",180,184,30,Ink.forest,.bold,width:70)
         label("口粮",111,204,10,NSColor(hex:0x98755A),width:35)

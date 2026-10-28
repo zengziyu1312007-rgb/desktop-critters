@@ -205,7 +205,7 @@ final class World {
     }
     func record(_ text:String) {
         ensureDay();let i=reports.count-1
-        reports[i].events.append(Self.timeFormatter.string(from:Date())+"  "+text)
+        reports[i].events.append(Self.timeFormatter.string(from:Date())+"  "+petText(text))
         if reports[i].events.count>120 {reports[i].events.removeFirst(reports[i].events.count-120)}
     }
     func setRelations(_ value:Relations,reason:String) {
@@ -233,9 +233,9 @@ final class World {
     }
     var reportText:String {
         ensureDay()
-        var text="当前关系：\(relations.title)\n蟑螂 \(population(.roach)) · 蚂蚁 \(population(.ant)) · 卵 \(eggs.count) · 尸体 \(corpses.count+archivedCorpses)\n仅记录应用运行时发生的事件；关闭期间不模拟。\n保留最近 90 天，每天最多 120 条事件。\n"
+        var text="当前关系：\(relations.title)\n\(teamName(.roach)) \(population(.roach)) · \(teamName(.ant)) \(population(.ant)) · 卵 \(eggs.count) · 尸体 \(corpses.count+archivedCorpses)\n仅记录应用运行时发生的事件；关闭期间不模拟。\n保留最近 90 天，每天最多 120 条事件。\n"
         for day in reports.reversed() {
-            text += "\n━━ \(day.day) ━━\n孵化：蟑螂 \(day.roachBorn)，蚂蚁 \(day.antBorn)；成年 \(day.grown)\n交战损失：蟑螂 \(day.roachLost)，蚂蚁 \(day.antLost)；拖鞋拍死 \(day.swatted)\n搬回口粮 \(day.foodDelivered)；通商 \(day.trades) 次\n"
+            text += "\n━━ \(day.day) ━━\n孵化：左队 \(day.roachBorn)，右队 \(day.antBorn)；成年 \(day.grown)\n交战损失：左队 \(day.roachLost)，右队 \(day.antLost)；拖鞋拍死 \(day.swatted)\n搬回口粮 \(day.foodDelivered)；通商 \(day.trades) 次\n"
             text += day.events.isEmpty ? "暂无重大事件。\n" : day.events.joined(separator:"\n")+"\n"
         }
         return text
@@ -317,7 +317,7 @@ final class World {
             let stock=b.species == .roach ? roachFood : antFood
             let phase=b.adult ? "成年" : (stock == 0 ? "缺粮 · 成长暂停" : "成长 \(Int(b.growth*100))%")
             let role=b.role == .soldier ? "兵型" : (b.role == .scout ? "侦察型" : (b.role == .breeder ? "繁殖型" : "搬运型"))
-            return (b.p,"第\(b.generation)代 · \(b.morphTitle) · 吃\(b.meals ?? 0)口 · \(role) · \(phase)")
+            return (b.p,"第\(b.generation)代 · \(petMorphTitle(b)) · 吃\(b.meals ?? 0)口 · \(role) · \(phase)")
         }
         if let b=corpses.first(where:{$0.bug.id==id})?.bug { return (b.p,"#\(b.id) · 已死亡") }
         return nil
@@ -350,7 +350,7 @@ final class World {
     var soundEvent = false
     var roachNest: V { filming ? V(x:field.minX+66,y:field.maxY-62) : V(x:84,y:height-92) }
     var antNest: V { filming ? V(x:field.maxX-66,y:field.minY+75) : V(x:width-84,y:height-92) }
-    var resultTitle: String { roachScore == antScore ? "势均力敌，再来一块？" : (roachScore > antScore ? "蟑螂帮，抢饭成功！" : "蚂蚁军团，搬空全场！") }
+    var resultTitle: String { roachScore == antScore ? "势均力敌，再来一块？" : (roachScore > antScore ? teamName(.roach)+"，抢饭成功！" : teamName(.ant)+"，搬空全场！") }
 
     init(width: Double, height: Double, seed: UInt64 = UInt64.random(in: 1...UInt64.max)) {
         self.width = width; self.height = height; random = SeedRandom(value: seed)
@@ -358,7 +358,7 @@ final class World {
         populate(battle: false)
     }
     func say(_ text: String, force: Bool = false) {
-        if force || eventCooldown <= 0 { notice = Notice(text:text,time:4.5); eventCooldown = 3 }
+        if force || eventCooldown <= 0 { notice = Notice(text:petText(text),time:4.5); eventCooldown = 3 }
     }
     func populate(battle: Bool) {
         bugs.removeAll(); foods.removeAll(); trails.removeAll(); puffs.removeAll();fights.removeAll();sweeps=[];invaders=[];invasionTimer=140
@@ -418,19 +418,22 @@ final class World {
         let base=b.bodyScale
         let roachCap=min(sqrt(field.width*field.height*0.25/(130*78)),field.width*0.86/130,field.height*0.86/78)
         // Photographic bodies: roach 65 local points; ant 26. Keep maximum ant body length half.
-        let cap=b.species == .roach ? roachCap : roachCap*65/26*0.5
+        let kind=petID(b.species)
+        let cap=kind == "ant" ? roachCap*65/26*0.5 : (upright(b.species) ? roachCap*65/36 : roachCap)
         let progress=animated ? min(1,max(0,b.shownBulk ?? b.bulkValue)) : b.bulkValue
         return base*pow(max(1,cap/base),progress)
     }
-    var antAvatarEnabled=false
-    func radius(_ b:Bug)->Double { (b.species == .roach ? 29 : 11)*scale(for:b) }
+    var leftPetID="roach",rightPetID="ant"
+    var leftPetName="蟑螂",rightPetName="蚂蚁"
+    var antAvatarEnabled:Bool {get {upright(.ant)} set {rightPetID=newValue ? "avatar" : "ant"}}
+    func radius(_ b:Bug)->Double { (upright(b.species) ? 16 : (petID(b.species)=="ant" ? 11 : 29))*scale(for:b) }
     func safeBug(_ p:V,_ b:Bug)->V {
-        if antAvatarEnabled && b.species == .ant {
+        if upright(b.species) {
             let k=scale(for:b),rx=min(field.width/2,18*k),ry=min(field.height/2,20*k)
             return V(x:min(max(field.minX+rx,p.x),field.maxX-rx),y:min(max(field.minY+ry,p.y),field.maxY-ry))
         }
         let k=scale(for:b),cs=cos(b.angle),sn=sin(b.angle)
-        let back=b.species == .roach ? -47.0 : -17.0,front=b.species == .roach ? 95.0 : 21.0,half=b.species == .roach ? 39.0 : 13.0
+        let kind=petID(b.species),back=kind == "rat" ? -76.0 : (kind == "roach" ? -47.0 : -17.0),front=kind == "rat" ? 43.0 : (kind == "roach" ? 95.0 : 21.0),half=kind == "ant" ? 13.0 : (kind == "rat" ? 17.0 : 39.0)
         let corners=[V(x:back,y:-half),V(x:back,y:half),V(x:front,y:-half),V(x:front,y:half)].map{V(x:($0.x*cs-$0.y*sn)*k,y:($0.x*sn+$0.y*cs)*k)}
         let minX=field.minX-corners.map{$0.x}.min()!,maxX=field.maxX-corners.map{$0.x}.max()!
         let minY=field.minY-corners.map{$0.y}.min()!,maxY=field.maxY-corners.map{$0.y}.max()!
@@ -438,13 +441,13 @@ final class World {
     }
     func bodyHit(_ b:Bug,_ p:V,padding:Double=0,corpse:Bool=false)->Bool {
         let d=p-b.p,cs=cos(b.angle),sn=sin(b.angle),k=scale(for:b)
-        if antAvatarEnabled && b.species == .ant {
+        if upright(b.species) {
             let rx=16*k+padding,ry=(corpse ? 11.0 : 18.0)*k+padding
             return d.x*d.x/(rx*rx)+d.y*d.y/(ry*ry)<=1
         }
         let x=d.x*cs+d.y*sn,y = -d.x*sn+d.y*cs
-        let rx=(b.species == .roach ? 34.0 : 14.0)*k+padding
-        let ry=(b.species == .roach ? 15.0 : 8.0)*k*(corpse ? 0.55 : 1)+padding
+        let rx=(petID(b.species) == "ant" ? 14.0 : 34.0)*k+padding
+        let ry=(petID(b.species) == "ant" ? 8.0 : 15.0)*k*(corpse ? 0.55 : 1)+padding
         return x*x/(rx*rx)+y*y/(ry*ry)<=1
     }
     func snackScale(_ snack:Snack)->Double {snack.giant ? min(field.width,field.height)*0.42/56 : 1}
@@ -497,11 +500,11 @@ final class World {
         b.cooldown=b.bulkValue>=0.42 ? 2.4 : 1.1
         b.health=min(b.toughness,b.health+max(0,b.toughness-oldHealth))
         if oldGrowth<1 && b.adult {maturedCount += 1;ensureDay();reports[reports.count-1].grown += 1}
-        if b.morph != oldMorph {record("进食蜕变：\(b.species == .roach ? "蟑螂" : "蚂蚁") #\(b.id) 长成\(b.morphTitle)");say(b.bulkValue>=0.78 ? "\(b.morphTitle)！这一营的巨虫诞生了。" : "\(b.morphTitle)！大餐继续喂给它。",force:true)}
+        if b.morph != oldMorph {record("进食蜕变：\(b.species == .roach ? "蟑螂" : "蚂蚁") #\(b.id) 长成\(petMorphTitle(b))");say(b.bulkValue>=0.78 ? "\(petMorphTitle(b))！这一营的巨虫诞生了。" : "\(petMorphTitle(b))！大餐继续喂给它。",force:true)}
         burst(foods[index].p,kind:0,count:5)
     }
     func spillJuice(_ b:Bug,crushed:Bool) {
-        guard b.species == .roach,!splats.contains(where:{$0.bugID==b.id}) else {return}
+        guard petID(b.species) == "roach",!splats.contains(where:{$0.bugID==b.id}) else {return}
         let k=scale(for:b),r=min(180,max(5,16*k*(crushed ? 1.4 : 0.8)))
         // Visual randomness is independent of the ecology generator.
         var ink=SeedRandom(value:UInt64(max(0,b.id)) &* 7919 &+ UInt64(max(0,clock*1000)) &+ 71)

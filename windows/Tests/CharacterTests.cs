@@ -22,6 +22,7 @@ public static class CharacterTests {
   string invalid=Path.Combine(directory,"invalid.png");File.WriteAllText(invalid,"invalid");try{library.Import(invalid);Check(false,"invalid image");}catch{Check(library.Selected==custom.Id,"bad import preserves current choice");}
   string invisible=Path.Combine(directory,"invisible.png");var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(16,16,96,96,PixelFormats.Bgra32,null,new byte[16*16*4],16*4)));using(var output=File.Create(invisible))encoder.Save(output);try{library.Import(invisible);Check(false,"transparent image");}catch(InvalidDataException){Check(library.Selected==custom.Id,"transparent image is rejected");}
   var config=Path.Combine(folder,"appearance-v1.json");File.WriteAllText(config,"{\"version\":1,\"selected\":\"custom-bad\",\"customs\":[{\"id\":\"custom-bad\",\"file\":\"../outside.png\",\"custom\":true}]}");var sanitized=new CharacterLibrary(folder);Check(sanitized.Customs.Count==0&&sanitized.Selected=="ant","custom paths cannot escape local folder");File.WriteAllText(config,"{broken");Check(new CharacterLibrary(folder).Selected=="ant"&&File.ReadAllText(config)=="{broken","damaged settings preserved with fallback");
+  TeamTests.Run(directory,Check);TeamTests.Render(directory);
   CharacterLibrary.Shared=new CharacterLibrary(Path.Combine(directory,"appearance-smoke"));Console.WriteLine("CHARACTER CHECKS: "+checks+" passed");
  }
 }

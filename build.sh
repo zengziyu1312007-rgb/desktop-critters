@@ -18,8 +18,8 @@ cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>桌面有点脏</string>
 <key>CFBundleExecutable</key><string>DesktopCritters</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.10.0</string>
-<key>CFBundleVersion</key><string>16</string>
+<key>CFBundleShortVersionString</key><string>0.11.0</string>
+<key>CFBundleVersion</key><string>18</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>LSUIElement</key><false/>

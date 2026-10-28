@@ -18,7 +18,7 @@ struct RoachFlight: Codable {
 extension World {
     // Points remain the actual visible body centers, so mouse hits and grabs match the wings.
     @discardableResult func beginFlight(_ b:inout Bug,awayFrom source:V?=nil)->Bool {
-        guard !paused,mode != .result,b.species == .roach,b.adult,b.flight == nil,
+        guard !paused,mode != .result,petID(b.species) == "roach",b.adult,b.flight == nil,
               b.flipped<=0,(b.layTime ?? 0)<=0,(b.webTime ?? 0)<=0,b.id != grabbedID,
               bugs.filter({$0.flight != nil}).count<3 else {return false}
         var direction=source.map{(b.p-$0).unit} ?? V(x:cos(flightRandom.range(-.pi,.pi)),y:sin(flightRandom.range(-.pi,.pi)))
@@ -45,8 +45,8 @@ extension World {
             if beginFlight(&b,awayFrom:source) {bugs[i]=b;count += 1}
             if count>=3 {break}
         }
-        if source == nil {say(count>0 ? "蟑螂惊飞了，展开翅膀绕飞后落地。" : "等成蟑挣脱蛛丝后再试。",force:true)}
-        if count>0 {record("蟑螂惊飞：\(count)只成蟑离地避让，随后落回桌面")}
+        if source == nil {say(count>0 ? "起飞了，展开翅膀绕飞后落地。" : "先给任意一队选蟑螂；成年且未被缠住时可以起飞。",force:true)}
+        if count>0 {record("惊飞：\(count)只展开翅膀离地，随后落回桌面")}
         return count
     }
     func fly(_ b:inout Bug,_ dt:Double)->Bool {

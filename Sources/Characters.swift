@@ -15,6 +15,7 @@ struct CharacterSkin: Codable {
 private struct AppearanceSave: Codable {
     var version=1
     var selected:String
+    var left:String? = nil
     var customs:[CharacterSkin]
 }
 enum CharacterError: LocalizedError {
@@ -28,16 +29,30 @@ final class CharacterLibrary {
     private let writable:Bool
     private(set) var catalog:[CharacterSkin]=[]
     private(set) var customs:[CharacterSkin]=[]
-    private(set) var selectedID="nailong"
+    private(set) var selectedID="ant"
+    private(set) var leftID="roach"
     private(set) var loadNotice=""
     private var frames:[String:[NSImage]]=[:]
     var performedAt:Double = -100
     var performers=Set<Int>()
     var changed: (() -> Void)?
-    var all:[CharacterSkin] {catalog+customs}
+    static let natives:[CharacterSkin]=[
+        CharacterSkin(id:"roach",name:"蟑螂",tag:"展翅惊飞 · 写实虫体",effect:"",color:0xA2784E,file:""),
+        CharacterSkin(id:"ant",name:"蚂蚁",tag:"小巧搬运 · 围攻抢粮",effect:"",color:0x486852,file:""),
+        CharacterSkin(id:"rat",name:"老鼠",tag:"摇尾小跑 · 争食冲撞",effect:"ram",color:0x9C8A73,file:"")]
+    var all:[CharacterSkin] {Self.natives+catalog+customs}
+    func selected(for side:Species)->String {side == .roach ? leftID : selectedID}
+    func current(for side:Species)->CharacterSkin? {all.first{$0.id==selected(for:side)}}
+    func name(for side:Species)->String {current(for:side)?.name ?? (side == .roach ? "蟑螂" : "蚂蚁")}
+    func customRendering(for side:Species)->Bool {selected(for:side) != side.rawValue}
+    func apply(to world:World) {
+        world.leftPetID=leftID;world.rightPetID=selectedID
+        world.leftPetName=name(for:.roach);world.rightPetName=name(for:.ant)
+        for i in world.bugs.indices where world.petID(world.bugs[i].species) != "roach" {world.bugs[i].flight=nil}
+    }
     var current:CharacterSkin? {all.first{$0.id==selectedID}}
     var displayName:String {current?.name ?? "原蚂蚁"}
-    var enabled:Bool {current != nil && image(for:selectedID) != nil}
+    var enabled:Bool {!["roach","ant","rat"].contains(selectedID) && image(for:selectedID) != nil}
     init(folder:URL?=nil,writable:Bool=true) {
         self.folder=folder ?? FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("DesktopCritters")
         self.writable=writable
@@ -52,12 +67,14 @@ final class CharacterLibrary {
                     guard item.custom==true,item.id.hasPrefix("custom-"),!seen.contains(item.id),item.file==item.id+".png",!item.file.contains("/"),!item.file.contains("\\"),item.file.count<90 else{return false}
                     seen.insert(item.id);return true
                 }.prefix(32))
-                selectedID=config.selected=="ant" || all.contains{$0.id==config.selected} ? config.selected : "ant"
-                if selectedID != "ant" && image(for:selectedID)==nil {selectedID="ant";loadNotice="上次形象文件不可用，已显示原蚂蚁。"}
+                selectedID=valid(config.selected) ? config.selected : "ant"
+                leftID=valid(config.left ?? "roach") ? (config.left ?? "roach") : "roach"
+                if selectedID != config.selected || leftID != (config.left ?? "roach") {loadNotice="部分形象文件不可用，已恢复对应队伍的默认形象。"}
             } catch {selectedID="ant";loadNotice="形象设置读取失败，原文件已保留。选择新形象可重新保存。"}
         }
     }
-    private func save(selected:String,items:[CharacterSkin]) throws {
+    private func valid(_ id:String)->Bool {all.contains{$0.id==id} && image(for:id) != nil}
+    private func save(selected:String,left:String,items:[CharacterSkin]) throws {
         guard writable else{return}
         try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
         let file=folder.appendingPathComponent("appearance-v1.json")
@@ -65,15 +82,28 @@ final class CharacterLibrary {
         if FileManager.default.fileExists(atPath:file.path),let data=try? Data(contentsOf:file) {
             try data.write(to:folder.appendingPathComponent("appearance-previous.json"),options:.atomic)
         }
-        try JSONEncoder().encode(AppearanceSave(selected:selected,customs:items)).write(to:file,options:.atomic)
+        try JSONEncoder().encode(AppearanceSave(selected:selected,left:left,customs:items)).write(to:file,options:.atomic)
     }
-    func select(_ id:String) throws {
-        guard id=="ant" || (all.contains{$0.id==id} && image(for:id) != nil) else {throw CharacterError.invalid("这个形象文件不可用，请重新导入。")}
-        try save(selected:id,items:customs)
-        selectedID=id;performedAt = -100;performers=[];changed?()
+    func select(_ id:String,for side:Species = .ant) throws {
+        guard valid(id) else {throw CharacterError.invalid("这个形象文件不可用，请重新导入。")}
+        let nextLeft=side == .roach ? id : leftID,nextRight=side == .ant ? id : selectedID
+        try save(selected:nextRight,left:nextLeft,items:customs)
+        leftID=nextLeft;selectedID=nextRight;performedAt = -100;performers=[];changed?()
+    }
+    func restorePair() throws {
+        try save(selected:"ant",left:"roach",items:customs)
+        leftID="roach";selectedID="ant";performers=[];changed?()
     }
     func image(for id:String,pose:Int=0)->NSImage? {
         if let list=frames[id],!list.isEmpty {return list[min(list.count-1,max(0,pose))]}
+        if ["roach","ant","rat"].contains(id) {
+            let data=characterBitmap(width:240,height:180){c in
+                c.translateBy(x:120,y:90)
+                c.scaleBy(x:id=="ant" ? 4 : (id=="rat" ? 1.8 : 1.45),y:id=="ant" ? 4 : (id=="rat" ? 1.8 : 1.45))
+                CharacterArt.native(c,id:id,bug:Bug(id:0,species:.roach,p:.zero))
+            }
+            guard let image=NSImage(data:data) else{return nil};frames[id]=[image];return image
+        }
         guard let skin=all.first(where:{$0.id==id}) else{return nil}
         let url:URL?
         if skin.custom==true {url=folder.appendingPathComponent("CustomCharacters").appendingPathComponent(skin.file)}
@@ -89,7 +119,7 @@ final class CharacterLibrary {
         }
         return frames[id]?.first.flatMap{_ in image(for:id,pose:pose)}
     }
-    @discardableResult func importImage(_ url:URL) throws -> CharacterSkin {
+    @discardableResult func importImage(_ url:URL,for side:Species = .ant) throws -> CharacterSkin {
         guard customs.count<32 else {throw CharacterError.invalid("已收藏32个自定义形象，请先使用已有形象。")}
         let size=(try url.resourceValues(forKeys:[.fileSizeKey])).fileSize ?? 0
         guard size>0,size<=20*1024*1024 else {throw CharacterError.invalid("请选一张20MB以内的图片。")}
@@ -115,24 +145,39 @@ final class CharacterLibrary {
         try FileManager.default.copyItem(at:url,to:originals.appendingPathComponent(id+"."+ext))
         let name=String(url.deletingPathExtension().lastPathComponent.prefix(20))
         let skin=CharacterSkin(id:id,name:name.isEmpty ? "我的形象" : name,tag:"我的形象 · 弹跳与星光",effect:"stars",color:0x8DCBB8,file:id+".png",custom:true)
-        try save(selected:id,items:customs+[skin])
-        customs.append(skin);selectedID=id;changed?();return skin
+        try save(selected:side == .ant ? id : selectedID,left:side == .roach ? id : leftID,items:customs+[skin])
+        customs.append(skin);if side == .ant {selectedID=id} else {leftID=id};changed?();return skin
     }
-    func perform(in world:World,ids:Set<Int>?=nil) {
-        guard enabled else{return}
-        performedAt=world.clock;performers=ids ?? Set(world.bugs.filter{$0.species == .ant}.prefix(16).map{$0.id})
+    func perform(in world:World,side:Species = .ant,ids:Set<Int>?=nil) {
+        performedAt=world.clock;performers=ids ?? Set(world.bugs.filter{$0.species == side}.prefix(16).map{$0.id})
     }
     func observe(in world:World,at point:V) {
-        guard enabled,world.tool == .observe,let bug=world.bugs.filter({$0.species == .ant && world.bodyHit($0,point,padding:6)}).max(by:{$0.p.y<$1.p.y}) else{return}
-        perform(in:world,ids:[bug.id])
+        guard world.tool == .observe,let bug=world.bugs.filter({world.bodyHit($0,point,padding:6)}).max(by:{$0.p.y<$1.p.y}) else{return}
+        perform(in:world,side:bug.species,ids:[bug.id])
     }
     func performing(_ id:Int,clock:Double)->Double? {let t=(clock-performedAt)/1.6;return performers.contains(id) && t>=0 && t<1 ? t : nil}
 }
 
 enum CharacterArt {
+    static func native(_ c:CGContext,id:String,bug:Bug,dead:Bool=false) {
+        if id=="rat" {
+            c.saveGState();c.scaleBy(x:0.52,y:0.52)
+            Creatures.visitorBody(c,Invader(id:bug.id,kind:.rat,p:.zero,phase:dead ? 0 : bug.phase))
+            c.restoreGState()
+        } else {
+            var shown=Bug(id:bug.id,species:id=="roach" ? .roach : .ant,p:bug.p,phase:bug.phase,growth:bug.growth)
+            shown.bulk=bug.bulk;shown.flight=bug.flight
+            Creatures.bug(c,shown,dead:dead)
+        }
+    }
     static func draw(_ c:CGContext,bug:Bug,clock:Double,dead:Bool=false,alpha:Double=1) {
         let library=CharacterLibrary.shared
-        guard let skin=library.current else{return}
+        guard let skin=library.current(for:bug.species) else{return}
+        if ["roach","ant","rat"].contains(skin.id) {
+            c.saveGState();c.setAlpha(alpha);c.rotate(by:bug.angle)
+            if dead {c.scaleBy(x:1.1,y:0.55)}
+            native(c,id:skin.id,bug:bug,dead:dead);c.restoreGState();return
+        }
         let playful=library.performing(bug.id,clock:clock)
         let eating=(bug.bitePulse ?? 0)>0
         let walking=bug.speed>6
@@ -191,8 +236,8 @@ enum CharacterArt {
         c.restoreGState()
     }
     static func fight(_ c:CGContext,_ fight:FightEffect,world:World)->Bool {
-        guard CharacterLibrary.shared.enabled,let skin=CharacterLibrary.shared.current,
-              (world.bugs.first{$0.id==fight.attacker} ?? world.corpses.first{$0.bug.id==fight.attacker}?.bug)?.species == .ant else{return false}
+        guard let attacker=world.bugs.first(where:{$0.id==fight.attacker}) ?? world.corpses.first(where:{$0.bug.id==fight.attacker})?.bug,
+              let skin=CharacterLibrary.shared.current(for:attacker.species),!["roach","ant"].contains(skin.id) else{return false}
         let p=fight.from+(fight.to-fight.from)*0.62
         c.saveGState();c.translateBy(x:p.x,y:p.y);c.rotate(by:atan2(fight.to.y-fight.from.y,fight.to.x-fight.from.x))
         accent(c,effect:skin.effect,t:fight.age/fight.duration,size:fight.size,color:NSColor(hex:skin.color));c.restoreGState();return true
@@ -201,25 +246,25 @@ enum CharacterArt {
 
 final class CharacterTile:NSButton {
     let skin:CharacterSkin
+    let side:Species
     var choose:(()->Void)?
     override var isFlipped:Bool {true}
-    init(skin:CharacterSkin,frame:CGRect) {
-        self.skin=skin;super.init(frame:frame);isBordered=false;target=self;action=#selector(tap)
-        setAccessibilityLabel("换成"+skin.name);toolTip=skin.tag
+    init(skin:CharacterSkin,side:Species,frame:CGRect) {
+        self.skin=skin;self.side=side;super.init(frame:frame);isBordered=false;target=self;action=#selector(tap)
+        setAccessibilityLabel((side == .roach ? "左队换成" : "右队换成")+skin.name);toolTip=skin.tag
     }
     required init?(coder:NSCoder){fatalError()}
     @objc func tap(){choose?()}
     override func draw(_ rect:NSRect) {
-        let selected=CharacterLibrary.shared.selectedID==skin.id
+        let selected=CharacterLibrary.shared.selected(for:side)==skin.id
         fillRound(bounds,selected ? NSColor(hex:0xE2EEE4) : NSColor(hex:0xF0EFE7),15)
         if selected {strokeRound(bounds.insetBy(dx:1,dy:1),Ink.forest,15,1.8)}
         if let picture=CharacterLibrary.shared.image(for:skin.id) {
-            let r=CGRect(x:12,y:1,width:bounds.width-24,height:96)
-            let k=min(r.width/picture.size.width,r.height/picture.size.height)
+            let r=CGRect(x:12,y:1,width:bounds.width-24,height:88),k=min(r.width/picture.size.width,r.height/picture.size.height)
             picture.draw(in:CGRect(x:r.midX-picture.size.width*k/2,y:r.midY-picture.size.height*k/2,width:picture.size.width*k,height:picture.size.height*k),from:.zero,operation:.sourceOver,fraction:1,respectFlipped:true,hints:nil)
         }
-        label(skin.name,6,94,13,Ink.forest,.semibold,width:bounds.width-12,align:.center)
-        label(skin.tag,5,116,9,Ink.muted,width:bounds.width-10,align:.center)
+        label(skin.name,6,88,13,Ink.forest,.semibold,width:bounds.width-12,align:.center)
+        label(skin.tag,5,110,9,Ink.muted,width:bounds.width-10,align:.center)
         if selected {label("✓",bounds.width-22,9,12,Ink.forest,.bold,width:17)}
     }
 }
@@ -227,54 +272,70 @@ final class CharacterTile:NSButton {
 final class CharacterGallery:NSWindowController {
     let world:World
     var applied:(()->Void)?
+    private(set) var side:Species = .roach
     private let status=NSTextField(labelWithString:"")
-    private let scroll=NSScrollView()
-    private let content=FlippedCharacterView()
+    private let scroll=NSScrollView(),content=FlippedCharacterView()
+    private var teamButtons:[ActionButton]=[]
+    private var importButton:ActionButton!
     init(world:World) {
         self.world=world
-        let panel=NSPanel(contentRect:CGRect(x:150,y:130,width:680,height:590),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
-        panel.title="角色换装 · 桌面有点脏";panel.isReleasedWhenClosed=false;panel.minSize=NSSize(width:680,height:590)
-        panel.level=NSWindow.Level(rawValue:NSWindow.Level.floating.rawValue+3);panel.hidesOnDeactivate=false
-        panel.backgroundColor=Ink.cream
+        let panel=NSPanel(contentRect:CGRect(x:150,y:100,width:680,height:680),styleMask:[.titled,.closable,.resizable],backing:.buffered,defer:false)
+        panel.title="选择两队宠物 · 桌面有点脏";panel.isReleasedWhenClosed=false;panel.minSize=NSSize(width:680,height:620)
+        panel.level=NSWindow.Level(rawValue:NSWindow.Level.floating.rawValue+3);panel.hidesOnDeactivate=false;panel.backgroundColor=Ink.cream
         super.init(window:panel)
-        let root=FlippedCharacterView(frame:CGRect(x:0,y:0,width:680,height:590));root.autoresizingMask=[.width,.height];panel.contentView=root
-        let title=NSTextField(labelWithString:"给蚂蚁阵营换个主角")
-        title.font=NSFont.systemFont(ofSize:24,weight:.bold);title.textColor=Ink.forest;title.frame=CGRect(x:26,y:20,width:450,height:35);root.addSubview(title)
-        status.font=NSFont.systemFont(ofSize:12);status.textColor=Ink.muted;status.frame=CGRect(x:27,y:62,width:620,height:28);root.addSubview(status)
-        scroll.frame=CGRect(x:24,y:102,width:632,height:342);scroll.autoresizingMask=[.width,.height];scroll.hasVerticalScroller=true;scroll.drawsBackground=false;scroll.documentView=content;root.addSubview(scroll)
-        let pick=ActionButton("＋ 导入自己的图片",frame:CGRect(x:26,y:460,width:238,height:42),style:1){[weak self] in self?.importPhoto()}
-        pick.autoresizingMask=[.minYMargin];root.addSubview(pick)
-        let original=ActionButton("恢复原蚂蚁",frame:CGRect(x:276,y:460,width:166,height:42)){[weak self] in self?.select("ant")}
-        original.autoresizingMask=[.minYMargin];root.addSubview(original)
-        let play=ActionButton("表演一下",frame:CGRect(x:454,y:460,width:200,height:42)){[weak self] in
-            guard let self=self else{return};guard self.world.bugs.contains(where:{$0.species == .ant}) else {self.status.stringValue="桌面还没有活着的小队成员。先放几枚蚂蚁卵，等它们孵化。";return};self.world.paused=false;CharacterLibrary.shared.perform(in:self.world);self.applied?();self.status.stringValue="看桌面："+CharacterLibrary.shared.displayName+"登场！观察工具点它，也会回应。"
+        let root=FlippedCharacterView(frame:CGRect(x:0,y:0,width:680,height:680));root.autoresizingMask=[.width,.height];panel.contentView=root
+        let title=NSTextField(labelWithString:"今天，让谁对上谁？")
+        title.font=NSFont.systemFont(ofSize:24,weight:.bold);title.textColor=Ink.forest;title.frame=CGRect(x:26,y:18,width:600,height:35);root.addSubview(title)
+        let hint=NSTextField(labelWithString:"先选左队或右队，再挑角色；两边都能导入自己的图片。")
+        hint.font=NSFont.systemFont(ofSize:12);hint.textColor=Ink.muted;hint.frame=CGRect(x:27,y:58,width:620,height:24);root.addSubview(hint)
+        for (i,team) in [Species.roach,.ant].enumerated() {
+            let button=ActionButton("",frame:CGRect(x:26+i*320,y:93,width:308,height:66)){[weak self] in self?.focus(team)}
+            root.addSubview(button);teamButtons.append(button)
+        }
+        status.font=NSFont.systemFont(ofSize:12);status.textColor=Ink.muted;status.frame=CGRect(x:27,y:174,width:625,height:28);root.addSubview(status)
+        scroll.frame=CGRect(x:24,y:211,width:632,height:316);scroll.autoresizingMask=[.width,.height];scroll.hasVerticalScroller=true;scroll.drawsBackground=false;scroll.documentView=content;root.addSubview(scroll)
+        importButton=ActionButton("",frame:CGRect(x:26,y:544,width:238,height:42),style:1){[weak self] in self?.importPhoto()}
+        importButton.autoresizingMask=[.minYMargin];root.addSubview(importButton)
+        let original=ActionButton("蟑螂 × 蚂蚁",frame:CGRect(x:276,y:544,width:166,height:42)){[weak self] in
+            guard let self=self else{return};do {try CharacterLibrary.shared.restorePair();self.apply()} catch {self.status.stringValue=error.localizedDescription}
+        };original.toolTip="恢复最初的双虫组合，不重开生态";original.autoresizingMask=[.minYMargin];root.addSubview(original)
+        let play=ActionButton("这一队表演一下",frame:CGRect(x:454,y:544,width:200,height:42)){[weak self] in
+            guard let self=self else{return}
+            guard self.world.bugs.contains(where:{$0.species==self.side}) else {self.status.stringValue="这一队还没有成员，先放卵等待孵化。";return}
+            self.world.paused=false;CharacterLibrary.shared.perform(in:self.world,side:self.side);self.applied?()
+            self.status.stringValue=self.world.teamName(self.side)+"登场！观察工具点它，也会回应。"
         };play.autoresizingMask=[.minYMargin];root.addSubview(play)
-        let help=NSTextField(labelWithString:"PNG透明图效果最好；也支持JPEG和GIF首帧，20MB以内。\n图片保存在这台电脑。切换立即生效，当前生态继续成长。")
-        help.frame=CGRect(x:27,y:520,width:625,height:42);help.font=NSFont.systemFont(ofSize:11);help.textColor=Ink.muted;help.autoresizingMask=[.minYMargin];root.addSubview(help)
+        let help=NSTextField(labelWithString:"PNG透明图效果最好；也支持JPEG和GIF首帧，20MB以内。\n两队可选同款。图片只保存在本机；切换角色，原生态继续。\n投食、成长、产卵、外敌和喷药共用；选蟑螂的队伍可以展翅飞行。")
+        help.frame=CGRect(x:27,y:604,width:625,height:58);help.font=NSFont.systemFont(ofSize:11);help.textColor=Ink.muted;help.autoresizingMask=[.minYMargin];root.addSubview(help)
         rebuild()
     }
     required init?(coder:NSCoder){fatalError()}
+    func focus(_ side:Species) {self.side=side;rebuild()}
     func rebuild() {
         content.subviews.forEach{$0.removeFromSuperview()}
-        let skins=CharacterLibrary.shared.all
-        content.frame=CGRect(x:0,y:0,width:620,height:max(336,ceil(Double(skins.count)/4)*150))
+        let library=CharacterLibrary.shared,skins=library.all
+        content.frame=CGRect(x:0,y:0,width:620,height:max(316,ceil(Double(skins.count)/4)*140))
         for (i,skin) in skins.enumerated() {
-            let card=CharacterTile(skin:skin,frame:CGRect(x:(i%4)*154,y:(i/4)*150,width:144,height:140))
+            let card=CharacterTile(skin:skin,side:side,frame:CGRect(x:(i%4)*154,y:(i/4)*140,width:144,height:132))
             card.choose={[weak self] in self?.select(skin.id)};content.addSubview(card)
         }
-        status.stringValue="当前："+CharacterLibrary.shared.displayName+"  ·  点一个形象，整支蚂蚁队伍一起换装。"
+        for (i,team) in [Species.roach,.ant].enumerated() {
+            let b=teamButtons[i];b.title=(i==0 ? "左队 · " : "右队 · ")+String(library.name(for:team).prefix(14))
+            b.subtitle=team==side ? "正在选择 · 从下方图库挑选" : "点这里，更换这一队"
+            b.selected=team==side;b.setAccessibilityLabel(b.title+"，"+b.subtitle);b.needsDisplay=true
+        }
+        importButton.title=side == .roach ? "＋ 给左队导入图片" : "＋ 给右队导入图片";importButton.setAccessibilityLabel(importButton.title);importButton.needsDisplay=true
+        status.stringValue="正在选择："+world.teamName(side)+"  ·  "+String(skins.count)+"款可选"
     }
-    func select(_ id:String) {
-        do {try CharacterLibrary.shared.select(id);world.antAvatarEnabled=CharacterLibrary.shared.enabled;rebuild();applied?()}
-        catch {status.stringValue=error.localizedDescription}
-    }
+    private func apply() {CharacterLibrary.shared.apply(to:world);rebuild();applied?()}
+    func select(_ id:String) {do {try CharacterLibrary.shared.select(id,for:side);apply()} catch {status.stringValue=error.localizedDescription}}
     func importPhoto() {
         guard let window=window else{return}
-        let dialog=NSOpenPanel();dialog.title="选择你的桌宠形象";dialog.allowedContentTypes=[.png,.jpeg,.gif];dialog.allowsMultipleSelection=false
+        let destination=side
+        let dialog=NSOpenPanel();dialog.title=destination == .roach ? "给左队选择图片" : "给右队选择图片";dialog.allowedContentTypes=[.png,.jpeg,.gif];dialog.allowsMultipleSelection=false
         dialog.beginSheetModal(for:window){[weak self] result in
             guard result == .OK,let url=dialog.url,let self=self else{return}
-            do {_ = try CharacterLibrary.shared.importImage(url);self.world.antAvatarEnabled=CharacterLibrary.shared.enabled;self.rebuild();self.applied?()}
-            catch {self.status.stringValue=error.localizedDescription}
+            do {_ = try CharacterLibrary.shared.importImage(url,for:destination);self.apply()} catch {self.status.stringValue=error.localizedDescription}
         }
     }
 }

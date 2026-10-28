@@ -52,6 +52,7 @@ func runCharacterTests() {
     let recovered=CharacterLibrary(folder:base)
     check(recovered.selectedID=="ant" && !recovered.loadNotice.isEmpty,"damaged appearance settings fall back")
     check((try! String(contentsOf:config))=="{broken","damaged settings are not overwritten on read")
+    runTeamTests {check($0,$1)}
     print("CHARACTER CHECKS: \(count) passed")
     print("Evidence: \(base.path)")
 }
@@ -108,5 +109,6 @@ func renderCharacters(to directory:String) {
     let controlBitmap=controls.bitmapImageRepForCachingDisplay(in:controls.bounds)!
     controls.cacheDisplay(in:controls.bounds,to:controlBitmap)
     try! controlBitmap.representation(using:.png,properties:[:])!.write(to:dir.appendingPathComponent("Mac控制面板.png"))
+    renderTeamChecks(to:dir)
     print(dir.path)
 }

@@ -26,9 +26,9 @@ extension World {
         }
     }
     func emittedEgg(_ parent:Bug,id:Int)->Egg {
-        let dir=V(x:cos(parent.angle),y:sin(parent.angle)),k=scale(for:parent)
-        let from=parent.p-dir*(parent.species == .roach ? 20 : 8)*k
-        var p=safe(parent.p-dir*(parent.species == .roach ? 40 : 20)*k)
+        let dir=upright(parent.species) ? V(x:0,y:-1) : V(x:cos(parent.angle),y:sin(parent.angle)),k=scale(for:parent)
+        let from=parent.p-dir*(upright(parent.species) ? 15 : (petID(parent.species)=="ant" ? 8 : 20))*k
+        var p=safe(parent.p-dir*(upright(parent.species) ? 27 : (petID(parent.species)=="ant" ? 20 : 40))*k)
         if let place=shelters.min(by:{$0.p.distance(parent.p)<$1.p.distance(parent.p)}),place.p.distance(parent.p)<radius(parent)+100 {p=place.p+V(x:0,y:8)}
         var e=Egg(id:id,species:parent.species,p:p,hatchTime:parent.species == .roach ? 28 : 22,generation:parent.generation+1,brood:parent.species == .roach ? 3 : 1)
         e.layStart=from;e.layAge=0;e.parentID=parent.id

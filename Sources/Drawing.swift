@@ -395,7 +395,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
     for stain in world.splats {drawJuice(c,stain)}
     for corpse in world.corpses {
         let b = corpse.bug
-        if b.species == .ant && CharacterLibrary.shared.enabled {
+        if CharacterLibrary.shared.customRendering(for:b.species) {
             c.saveGState();c.translateBy(x:b.p.x,y:b.p.y);c.scaleBy(x:world.scale(for:b),y:world.scale(for:b));CharacterArt.draw(c,bug:b,clock:world.clock,dead:true,alpha:0.64);c.restoreGState();continue
         }
         c.saveGState(); c.translateBy(x:b.p.x,y:b.p.y); c.rotate(by:b.angle)
@@ -429,7 +429,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             ellipse(c,CGRect(x:-34,y:13,width:68,height:16),NSColor.black.withAlphaComponent(0.13))
             c.translateBy(x:0,y:-12); c.scaleBy(x:1.13,y:1.13)
         }
-        let avatar=b.species == .ant && CharacterLibrary.shared.enabled
+        let avatar=CharacterLibrary.shared.customRendering(for:b.species)
         if !avatar {c.rotate(by:b.angle + (b.fightTime>0 ? sin(world.clock*35+Double(b.id))*0.22 : 0))}
         let breathing=1+sin(max(0,(b.bitePulse ?? 0))/0.55*Double.pi)*0.07+((b.layTime ?? 0)>0 ? sin(world.clock*9)*0.035 : 0)
         c.scaleBy(x:world.scale(for:b)*breathing,y:world.scale(for:b)*breathing)
@@ -457,7 +457,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             drawJuice(c,stain,alpha:1-t);c.restoreGState()
         }
         for b in sweep.bodies {
-            if b.species == .ant && CharacterLibrary.shared.enabled {
+            if CharacterLibrary.shared.customRendering(for:b.species) {
                 c.saveGState();c.translateBy(x:b.p.x+ease*90,y:b.p.y-ease*35);c.rotate(by:ease);c.scaleBy(x:world.scale(for:b)*(1-ease*0.75),y:world.scale(for:b)*(1-ease*0.75));CharacterArt.draw(c,bug:b,clock:world.clock,dead:true,alpha:(1-t)*0.6);c.restoreGState();continue
             }
             c.saveGState();c.translateBy(x:b.p.x+ease*90,y:b.p.y-ease*35);c.rotate(by:b.angle+ease*1.1)
