@@ -1,8 +1,8 @@
 # 桌面有点脏 · Desktop Critters
 
-蟑螂和蚂蚁住进你的电脑桌面。投食、繁殖、围攻、巨化，再用拖鞋和扫把收拾战场。
+选两种宠物，让它们住进电脑桌面。奶龙对老鼠、蟑螂对蚂蚁，或两张自己上传的图片：投食、繁殖、围攻、巨化，再用杀虫剂、拖鞋和扫把收拾战场。
 
-同一个仓库维护两套原生桌宠：**Mac v0.9.0**（Swift / AppKit）和 **Windows v0.9.0**（C# / WPF）。
+同一个仓库维护两套原生桌宠：**Mac v0.11.0**（Swift / AppKit）和 **Windows v0.11.0**（C# / WPF）。
 
 ## 下载与开启
 
@@ -10,12 +10,12 @@
 
 | 平台 | 下载 | 兼容范围 |
 | --- | --- | --- |
-| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
-| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.9.0/DesktopCritters-v0.9.0-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
+| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
+| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
 
 两端安装包都不要求另装开发环境。Windows运行安装包后从开始菜单打开；Mac解压后双击“桌面有点脏.app”。安装仍需用户确认。
 
-v0.9.0同步加入蟑螂飞行、蜈蚣／蛇／老鼠、可见产卵与文件夹藏卵、杀虫剂；旧版包继续保留。Mac的Bundle ID和原存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
+v0.11.0将角色换装与生态统一：左右两队都能独立选角色或导入图片，保留飞行、五类外敌、可见产卵、文件夹藏卵与杀虫剂。旧版包继续保留。Mac的Bundle ID和原存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
 
 当前两个平台都尚未进行商业证书签名／公证，系统可能显示发布者提示。首版Windows的多屏、部分缩放与实际鼠标体验仍待更多真机反馈。
 
@@ -30,6 +30,18 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 - 应用在前台时按 **⌘0**。
 - 面板右上角 **−** 用来收起面板；**退出** 用来关闭应用。
 
+## 选择两队宠物
+
+点控制面板上的 **左队** 或 **右队**，打开同一个角色库。Mac顶部“桌宠”菜单也有“选择两队宠物与自定义图片”，应用内可按 ⌘K；Windows从控制面板或托盘进入。
+
+- 两队各自选择：蟑螂、蚂蚁、老鼠，以及奶龙、奥特曼、牛来、乌萨奇、卡皮巴拉、LABUBU、Bongo猫、黄袋鼠，共11个内置选项。
+- 先选左队／右队，再点角色；同款也能分属两队。双方可以各自导入不同图片，已导入图片可供任一队选择。
+- 支持20MB以内的PNG、JPEG、GIF首帧；透明PNG效果更好。最多保存32个自定义角色，图片与原件只留在本机。
+- “蟑螂 × 蚂蚁”恢复原始组合，不重开生态、不删除自定义图库。旧换装版的形象迁移至右队，左队保持蟑螂。
+- 任一队选择蟑螂，都能展翅飞行；其他形象不长蟑螂翅膀。两队均参与吃食、成长、战斗、游戏产卵和孵化，喷药均可造成死亡，尸体可清扫。外敌老鼠与玩家选择的老鼠分别行动。
+
+内置卡通角色沿用四姿态与程序动画；自定义单图随动作弹跳、缩放、出招和倒下，不会自动生成完整骨骼或额外姿态。左右队沿用各自的繁殖、人口和战斗规则，选择形象不会重置生态数值。角色设置独立保存在 `appearance-v1.json`，生态存档路径不变。
+
 ## 怎么玩
 
 | 操作 | 效果 |
@@ -38,11 +50,11 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 | 喂给虫子 | 选择食物后点虫体；实际吃到的一口会推动成长，进食有冷却 |
 | 搬个家 | 按住虫子拖动到其他地方 |
 | 拍死 | 用拖鞋拍击；蟑螂挤压后爆出黄褐色汁液，留下污渍和尸体 |
-| 杀虫剂 · 0 | 点击或拖动喷雾，覆盖到的蟑螂／蚂蚁死亡，留下尸体与污渍；卵保留，扫把负责清理 |
+| 杀虫剂 · 0 | 点击或拖动喷雾，覆盖到的两队宠物死亡，留下尸体与污渍；卵保留，扫把负责清理 |
 | 惊飞蟑螂 · 8 | 成蟑展开翅膀绕飞后落地；自然也会偶尔起飞，附近拖鞋会惊飞幸存者 |
 | 藏卵处 · 9 | 选择工具后点击桌面文件夹图标；附近成虫会在该位置产卵，卵躲到图标后，孵化幼体从边缘出来；再点同处取消 |
 | 扫把 | 点按或拖动，扫走尸体、汁液污渍、卵和外敌残骸 |
-| 放卵 | 手动放下蟑螂卵鞘或蚁卵，等待孵化 |
+| 放卵 | 手动放下左队或右队的卵，等待孵化 |
 | 今日战报 | 查看运行期间的出生、伤亡、成长和外交事件，也可手动停火或建交 |
 | 引来外敌 | 触发蜘蛛缠丝、甲虫冲撞、蜈蚣连续追咬、蛇蓄势单点扑咬或老鼠抢粮冲散，每次最多一只活外敌 |
 
@@ -60,7 +72,7 @@ Windows：双击系统托盘图标，或从任务栏打开控制台；Ctrl+0在�
 | --- | --- |
 | 1 / 2 / 3 / 4 | 投食 / 搬个家 / 拍死 / 扫把 |
 | 0 / 8 / 9 | 杀虫剂 / 惊飞蟑螂 / 标记藏卵处 |
-| 5 / 6 / 7 | 观察 / 放蟑螂卵 / 放蚂蚁卵 |
+| 5 / 6 / 7 | 观察 / 放左队卵 / 放右队卵 |
 | Tab | 切换选择虫或卵 |
 | Return | 对当前目标或鼠标位置使用工具 |
 | 空格 | 互动模式下暂停或继续 |

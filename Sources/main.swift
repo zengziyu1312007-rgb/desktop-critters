@@ -15,6 +15,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
     var hidden = false
     var soundEnabled = UserDefaults.standard.bool(forKey:"soundEnabled")
     var localKeys: Any?
+    var characterGallery:CharacterGallery?
     var reportPanel:NSPanel?
     var reportView:NSTextView?
     var lastSave:Double = 0
@@ -56,6 +57,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
             do {try world.restore(Data(contentsOf:saveURL))}
             catch {saveBlocked=true;world.say("旧存档读取失败，已保留原文件；当前临时运行。",force:true)}
         }
+        CharacterLibrary.shared.apply(to:world)
         overlay = PetWindow(contentRect:f,styleMask:[.titled,.fullSizeContentView],backing:.buffered,defer:false)
         overlay.title = "桌面有点脏 · 虫群"
         overlay.titleVisibility = .hidden; overlay.titlebarAppearsTransparent=true
@@ -81,6 +83,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         panel.isReleasedWhenClosed=false; panel.delegate=self
         panelView = ControlView(world:world); panel.contentView=panelView
         panelView.soundEnabled=soundEnabled
+        panelView.onCharacters = {[weak self] team in self?.showCharacters();self?.characterGallery?.focus(team)}
         panelView.onReport = {[weak self] in self?.showReport()}
         panelView.onStart = {[weak self] in self?.startRound()}
         panelView.onCompanion = {[weak self] in self?.toCompanion()}
@@ -94,6 +97,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         createMenu()
         localKeys=NSEvent.addLocalMonitorForEvents(matching:.keyDown){[weak self] event in
             guard let self=self else {return event}
+            guard event.window === self.overlay || event.window === self.panel else {return event}
             if event.keyCode==53 {self.toCompanion();return nil}
             if event.modifierFlags.contains(.command),event.charactersIgnoringModifiers=="q" {NSApp.terminate(nil);return nil}
             if event.characters=="0",!event.modifierFlags.contains(.command) {self.selectTool(.spray);return nil}
@@ -121,6 +125,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         let appMenu = NSMenu(); root.submenu=appMenu
         let show=NSMenuItem(title:"打开控制面板",action:#selector(showPanel),keyEquivalent:"0");show.target=self;appMenu.addItem(show)
         let work=NSMenuItem(title:"回到工作",action:#selector(toCompanion),keyEquivalent:"");work.target=self;appMenu.addItem(work)
+        let characters=NSMenuItem(title:"选择两队宠物与自定义图片",action:#selector(showCharacters),keyEquivalent:"k");characters.target=self;appMenu.addItem(characters)
         let credits=NSMenuItem(title:"照片与素材来源",action:#selector(showCredits),keyEquivalent:"");credits.target=self;appMenu.addItem(credits)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle:"退出桌面有点脏",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q")
@@ -134,11 +139,19 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         status.button?.toolTip="桌面有点脏 · 打开控制面板"
         status.button?.setAccessibilityLabel("桌宠 · 打开控制面板")
         let menu=NSMenu()
-        let items:[(String,Selector,String)] = [("打开控制面板",#selector(showPanel),""),("收起控制面板",#selector(hidePanel),""),("今日战报",#selector(showReport),""),("惊飞蟑螂",#selector(scareRoaches),""),("竖屏取景 / 全桌面",#selector(toggleFrame),""),("生命速度 1 / 2 / 4",#selector(changeRate),""),("开一局",#selector(startRound),""),("回到工作 · 鼠标穿透",#selector(toCompanion),""),("暂停 / 继续",#selector(togglePause),""),("隐藏 / 显示全部",#selector(toggleHidden),""),("照片与素材来源",#selector(showCredits),"")]
+        let items:[(String,Selector,String)] = [("打开控制面板",#selector(showPanel),""),("选择两队宠物与自定义图片",#selector(showCharacters),""),("收起控制面板",#selector(hidePanel),""),("今日战报",#selector(showReport),""),("惊飞蟑螂",#selector(scareRoaches),""),("竖屏取景 / 全桌面",#selector(toggleFrame),""),("生命速度 1 / 2 / 4",#selector(changeRate),""),("开一局",#selector(startRound),""),("回到工作 · 鼠标穿透",#selector(toCompanion),""),("暂停 / 继续",#selector(togglePause),""),("隐藏 / 显示全部",#selector(toggleHidden),""),("照片与素材来源",#selector(showCredits),"")]
         for (title,action,key) in items {let item=NSMenuItem(title:title,action:action,keyEquivalent:key);item.target=self;menu.addItem(item)}
         menu.addItem(.separator())
         let quit=NSMenuItem(title:"退出桌面有点脏",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q"); menu.addItem(quit)
         status.menu=menu
+    }
+    @objc func showCharacters() {
+        world.release()
+        if characterGallery == nil {
+            characterGallery=CharacterGallery(world:world)
+            characterGallery?.applied = {[weak self] in self?.arena.needsDisplay=true;self?.panelView.refresh()}
+        }
+        characterGallery?.rebuild();characterGallery?.showWindow(nil);characterGallery?.window?.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
     }
     func applyInput() {
         let interactive=world.interactive && !hidden
@@ -166,7 +179,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         hidden=false; overlay.orderFrontRegardless(); panel.orderFrontRegardless()
         world.release(); world.tool=tool; world.watchedID=nil
         updateAvoid()
-        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体、汁液和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放蟑螂卵，暂停时也可以摆放。","点桌面放蚂蚁卵，暂停时也可以摆放。","","点文件夹图标，标记背后的藏卵处。再点同位置取消。","点击或拖动喷药，覆盖到的虫会死亡，尸体可清扫。"][tool.rawValue],force:true)
+        world.say(["点桌面空白处，给双方加餐。","按住虫子，把它搬到你想放的地方。","拍中就会死亡，尸体留在原地。","扫把点按或拖动，扫走尸体、汁液和卵。","点选虫或卵，跟着看它的一生。Tab 可切换。","点桌面放左队卵，暂停时也可以摆放。","点桌面放右队卵，暂停时也可以摆放。","","点文件夹图标，标记背后的藏卵处。再点同位置取消。","点击或拖动喷药，覆盖到的虫会死亡，尸体可清扫。"][tool.rawValue],force:true)
         applyInput(); NSApp.activate(ignoringOtherApps:true)
     }
     @objc func toggleFrame() {
@@ -191,7 +204,7 @@ final class AppDelegate: NSObject,NSApplicationDelegate,NSWindowDelegate {
         if world.tool == .grab {
             if world.grabbedID != nil {world.release()}
             else {world.press(p)}
-        } else {world.press(p); world.release()}
+        } else {world.press(p); CharacterLibrary.shared.observe(in:world,at:p);world.release()}
         arena.needsDisplay=true
     }
     @objc func togglePause() {world.paused.toggle();world.release();panelView.refresh();arena.needsDisplay=true}
@@ -330,6 +343,8 @@ func renderIcon(to path:String) {
 }
 
 let arguments=CommandLine.arguments
+if arguments.contains("--character-self-test") {_ = NSApplication.shared;runCharacterTests();exit(0)}
+if let index=arguments.firstIndex(of:"--render-characters"),arguments.count>index+1 {_ = NSApplication.shared;renderCharacters(to:arguments[index+1]);exit(0)}
 if arguments.contains("--self-test") {runWorldTests();exit(0)}
 if let index=arguments.firstIndex(of:"--render-preview"),arguments.count>index+1 {_ = NSApplication.shared;renderPreview(to:arguments[index+1]);exit(0)}
 if let i=arguments.firstIndex(of:"--render-feature-checks"),arguments.count>i+1 {_ = NSApplication.shared;renderFeatureChecks(to:arguments[i+1]);exit(0)}

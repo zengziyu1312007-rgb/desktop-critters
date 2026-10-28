@@ -192,6 +192,7 @@ enum Creatures {
         c.restoreGState()
     }
     static func bug(_ c:CGContext,_ b:Bug,alpha:Double=1,dead:Bool=false) {
+        if CreatureFrames.draw(c,b,alpha:alpha,dead:dead) {return}
         if b.species == .ant {
             ant(c,phase:dead ? 0 : b.phase,alpha:alpha,morph:b.morph)
             return
@@ -395,6 +396,9 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
     for stain in world.splats {drawJuice(c,stain)}
     for corpse in world.corpses {
         let b = corpse.bug
+        if CharacterLibrary.shared.customRendering(for:b.species) {
+            c.saveGState();c.translateBy(x:b.p.x,y:b.p.y);c.scaleBy(x:world.scale(for:b),y:world.scale(for:b));CharacterArt.draw(c,bug:b,clock:world.clock,dead:true,alpha:0.64);c.restoreGState();continue
+        }
         c.saveGState(); c.translateBy(x:b.p.x,y:b.p.y); c.rotate(by:b.angle)
         let crushed=world.splats.first{$0.bugID==b.id && $0.crushed}
         let press=crushed.map{max(0,1-$0.age/0.22)} ?? 0
@@ -426,17 +430,19 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             ellipse(c,CGRect(x:-34,y:13,width:68,height:16),NSColor.black.withAlphaComponent(0.13))
             c.translateBy(x:0,y:-12); c.scaleBy(x:1.13,y:1.13)
         }
-        c.rotate(by:b.angle + (b.fightTime>0 ? sin(world.clock*35+Double(b.id))*0.22 : 0))
+        let avatar=CharacterLibrary.shared.customRendering(for:b.species)
+        if !avatar {c.rotate(by:b.angle + (b.fightTime>0 ? sin(world.clock*35+Double(b.id))*0.22 : 0))}
         let breathing=1+sin(max(0,(b.bitePulse ?? 0))/0.55*Double.pi)*0.07+((b.layTime ?? 0)>0 ? sin(world.clock*9)*0.035 : 0)
         c.scaleBy(x:world.scale(for:b)*breathing,y:world.scale(for:b)*breathing)
-        Creatures.bug(c,b,alpha:0.73+0.27*b.growth)
+        if avatar {CharacterArt.draw(c,bug:b,clock:world.clock)}
+        else {Creatures.bug(c,b,alpha:0.73+0.27*b.growth)}
         if (b.webTime ?? 0)>0 {
             for n in -2...2 {
                 line(c,[CGPoint(x:-25,y:Double(n)*5-12),CGPoint(x:27,y:Double(n)*5+12)],NSColor(white:0.92,alpha:0.65),0.5)
                 line(c,[CGPoint(x:Double(n)*9-10,y:-18),CGPoint(x:Double(n)*9+10,y:18)],NSColor(white:0.92,alpha:0.55),0.5)
             }
         }
-        if b.cargo>0 { c.saveGState(); c.translateBy(x:b.species == .roach ? 34*Creatures.roachSize : 21*Creatures.antSize,y:0); Creatures.crumb(c,scale:b.species == .roach ? 1.1 : 0.5); c.restoreGState() }
+        if b.cargo>0 && !avatar { c.saveGState(); c.translateBy(x:b.species == .roach ? 34*Creatures.roachSize : 21*Creatures.antSize,y:0); Creatures.crumb(c,scale:b.species == .roach ? 1.1 : 0.5); c.restoreGState() }
         c.restoreGState()
     }
     for v in world.invaders {
@@ -452,6 +458,9 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             drawJuice(c,stain,alpha:1-t);c.restoreGState()
         }
         for b in sweep.bodies {
+            if CharacterLibrary.shared.customRendering(for:b.species) {
+                c.saveGState();c.translateBy(x:b.p.x+ease*90,y:b.p.y-ease*35);c.rotate(by:ease);c.scaleBy(x:world.scale(for:b)*(1-ease*0.75),y:world.scale(for:b)*(1-ease*0.75));CharacterArt.draw(c,bug:b,clock:world.clock,dead:true,alpha:(1-t)*0.6);c.restoreGState();continue
+            }
             c.saveGState();c.translateBy(x:b.p.x+ease*90,y:b.p.y-ease*35);c.rotate(by:b.angle+ease*1.1)
             c.scaleBy(x:world.scale(for:b)*(1-ease*0.75),y:world.scale(for:b)*0.55*(1-ease*0.75))
             Creatures.bug(c,b,alpha:(1-t)*0.55,dead:true);c.restoreGState()
@@ -461,6 +470,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
         c.saveGState();c.translateBy(x:sweep.p.x-35+ease*85,y:sweep.p.y);c.setAlpha(1-t*t);Creatures.broom(c,swing:sin(t*Double.pi)*0.7);c.restoreGState()
     }
     for fight in world.fights {
+        if CharacterArt.fight(c,fight,world:world) {continue}
         let t=fight.age/fight.duration
         let direction=(fight.to-fight.from).unit
         let impact=fight.from+(fight.to-fight.from)*0.62
@@ -564,7 +574,7 @@ final class ArenaView: NSControl {
         drawArena(world,in:c)
     }
     func point(_ event:NSEvent) -> V { let p = convert(event.locationInWindow,from:nil); return V(x:p.x,y:p.y) }
-    override func mouseDown(with e:NSEvent) { world.press(point(e)); needsDisplay=true }
+    override func mouseDown(with e:NSEvent) { world.press(point(e)); CharacterLibrary.shared.observe(in:world,at:point(e)); needsDisplay=true }
     override func mouseDragged(with e:NSEvent) { world.drag(point(e)); needsDisplay=true }
     override func mouseUp(with e:NSEvent) { world.release() }
     override func rightMouseDown(with e:NSEvent) { onEscape?() }

@@ -30,8 +30,8 @@ try {
   $BaseLanguage | Set-Content -Encoding utf8BOM (Join-Path $OutDir 'ChineseSimplified.isl')
   & $Iscc "/DPublishDir=$PublishDir" "/DOutputDir=$ReleaseDir" (Join-Path $ProjectDir 'installer.iss')
   if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
-  Compress-Archive -Path (Join-Path $PublishDir '*') -DestinationPath (Join-Path $ReleaseDir 'DesktopCritters-v0.9.0-Windows-x64-Portable.zip') -Force
-  $Setup = Join-Path $ReleaseDir 'DesktopCritters-v0.9.0-Windows-x64-Setup.exe'
+  Compress-Archive -Path (Join-Path $PublishDir '*') -DestinationPath (Join-Path $ReleaseDir 'DesktopCritters-v0.11.0-Windows-x64-Portable.zip') -Force
+  $Setup = Join-Path $ReleaseDir 'DesktopCritters-v0.11.0-Windows-x64-Setup.exe'
   $ProbeDir = Join-Path $env:TEMP 'DesktopCritters-Install-Probe'
   $Process = Start-Process -FilePath $Setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$ProbeDir","/LOG=$(Join-Path $LogDir 'install.txt')") -Wait -PassThru
   if ($Process.ExitCode -ne 0 -or !(Test-Path (Join-Path $ProbeDir 'DesktopCritters.exe'))) { throw 'Installer probe failed' }
