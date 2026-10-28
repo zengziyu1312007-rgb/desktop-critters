@@ -411,8 +411,13 @@ final class World {
         let progress=animated ? min(1,max(0,b.shownBulk ?? b.bulkValue)) : b.bulkValue
         return base*pow(max(1,cap/base),progress)
     }
+    var antAvatarEnabled=false
     func radius(_ b:Bug)->Double { (b.species == .roach ? 29 : 11)*scale(for:b) }
     func safeBug(_ p:V,_ b:Bug)->V {
+        if antAvatarEnabled && b.species == .ant {
+            let k=scale(for:b),rx=min(field.width/2,18*k),ry=min(field.height/2,20*k)
+            return V(x:min(max(field.minX+rx,p.x),field.maxX-rx),y:min(max(field.minY+ry,p.y),field.maxY-ry))
+        }
         let k=scale(for:b),cs=cos(b.angle),sn=sin(b.angle)
         let back=b.species == .roach ? -47.0 : -17.0,front=b.species == .roach ? 95.0 : 21.0,half=b.species == .roach ? 39.0 : 13.0
         let corners=[V(x:back,y:-half),V(x:back,y:half),V(x:front,y:-half),V(x:front,y:half)].map{V(x:($0.x*cs-$0.y*sn)*k,y:($0.x*sn+$0.y*cs)*k)}
@@ -422,6 +427,10 @@ final class World {
     }
     func bodyHit(_ b:Bug,_ p:V,padding:Double=0,corpse:Bool=false)->Bool {
         let d=p-b.p,cs=cos(b.angle),sn=sin(b.angle),k=scale(for:b)
+        if antAvatarEnabled && b.species == .ant {
+            let rx=16*k+padding,ry=(corpse ? 11.0 : 18.0)*k+padding
+            return d.x*d.x/(rx*rx)+d.y*d.y/(ry*ry)<=1
+        }
         let x=d.x*cs+d.y*sn,y = -d.x*sn+d.y*cs
         let rx=(b.species == .roach ? 34.0 : 14.0)*k+padding
         let ry=(b.species == .roach ? 15.0 : 8.0)*k*(corpse ? 0.55 : 1)+padding

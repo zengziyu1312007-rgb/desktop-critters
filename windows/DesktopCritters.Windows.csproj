@@ -2,13 +2,14 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <ImplicitUsings>disable</ImplicitUsings><Nullable>enable</Nullable><Version>0.8.0</Version>
+    <ImplicitUsings>disable</ImplicitUsings><Nullable>enable</Nullable><Version>0.10.0</Version>
     <AssemblyName>DesktopCritters</AssemblyName><RootNamespace>DesktopCritters</RootNamespace>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon><ApplicationManifest>app.manifest</ApplicationManifest>
     <PublishSingleFile>true</PublishSingleFile><SelfContained>true</SelfContained><IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier><DebugType>none</DebugType><PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="../Resources/Characters/*" Link="Characters/%(Filename)%(Extension)" />
     <Resource Include="../Resources/Textures/roach-body-photo.png" Link="Assets/roach.png" />
     <Resource Include="../Resources/Textures/ant-body-photo-v1.png" Link="Assets/ant.png" />
     <Content Include="../Resources/素材署名.txt" Link="素材署名.txt" CopyToOutputDirectory="PreserveNewest" />

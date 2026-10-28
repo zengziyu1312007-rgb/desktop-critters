@@ -1,8 +1,8 @@
 name: Windows build and checks
 on:
   push:
-    branches: [main, codex/windows-port]
-    paths: ['windows/**', 'tests/**', 'docs/platform.js', '.github/workflows/windows.yml']
+    branches: [main, codex/windows-port, codex/character-library]
+    paths: ['windows/**', 'Resources/Characters/**', 'tests/**', 'docs/platform.js', '.github/workflows/windows.yml']
   workflow_dispatch:
 permissions:
   contents: read

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "nailong",
+    "name": "奶龙",
+    "tag": "吃撑弹肚 · 摇摆冲撞",
+    "effect": "bounce",
+    "color": 15054139,
+    "file": "nailong.png",
+    "facesLeft": true
+  },
+  {
+    "id": "ultraman",
+    "name": "奥特曼",
+    "tag": "交叉蓄力 · 星光射线",
+    "effect": "beam",
+    "color": 6144511,
+    "file": "ultraman.png"
+  },
+  {
+    "id": "niulai",
+    "name": "牛来",
+    "tag": "低头蓄力 · 蹄声冲撞",
+    "effect": "ram",
+    "color": 13803579,
+    "file": "niulai.png"
+  },
+  {
+    "id": "usagi",
+    "name": "乌萨奇",
+    "tag": "弹跳扑击 · 星星炸开",
+    "effect": "stars",
+    "color": 15774312,
+    "file": "usagi.png"
+  },
+  {
+    "id": "capybara",
+    "name": "卡皮巴拉",
+    "tag": "慢慢摇晃 · 淡定趴下",
+    "effect": "calm",
+    "color": 8046215,
+    "file": "capybara.png"
+  },
+  {
+    "id": "labubu",
+    "name": "LABUBU",
+    "tag": "蹑脚溜达 · 爪爪连击",
+    "effect": "claw",
+    "color": 12621749,
+    "file": "labubu.png"
+  },
+  {
+    "id": "bongo",
+    "name": "Bongo猫",
+    "tag": "小爪拍打 · 泡泡拍子",
+    "effect": "bubbles",
+    "color": 7919313,
+    "file": "bongo.png"
+  },
+  {
+    "id": "kangaroo",
+    "name": "黄袋鼠",
+    "tag": "摇肚跳跳 · 星光蹦蹦",
+    "effect": "stars",
+    "color": 15774312,
+    "file": "kangaroo.png"
+  }
+]

@@ -43,6 +43,7 @@ final class ControlView: NSView {
     var onStart:(() -> Void)?; var onCompanion:(() -> Void)?; var onPause:(() -> Void)?
     var onHide:(() -> Void)?; var onTool:((Tool)->Void)?; var onSound:(()->Void)?; var onQuit:(()->Void)?
     var onFrame:(()->Void)?; var onRate:(()->Void)?; var onReport:(()->Void)?
+    var onCharacters:(()->Void)?;var characterButton:ActionButton!
     var snacks:[ActionButton]=[]
     var frameButton:ActionButton!; var rateButton:ActionButton!
     var soundEnabled = false
@@ -89,10 +90,13 @@ final class ControlView: NSView {
                 _ = self?.world.summonInvader(kind);self?.refresh()
             };addSubview(button)
         }
+        characterButton=ActionButton("角色换装",frame:CGRect(x:22,y:623,width:280,height:26)){[weak self] in self?.onCharacters?()}
+        addSubview(characterButton)
         refresh()
     }
     required init?(coder:NSCoder) { fatalError() }
     func refresh() {
+        characterButton?.title="角色换装 · "+CharacterLibrary.shared.displayName+"  ›";characterButton?.needsDisplay=true
         startButton.title = world.mode == .battle ? "进行中  ·  点击重新开局" : (world.mode == .result ? "再来一局" : "开一局  ·  2 分 30 秒")
         for (i,b) in snacks.enumerated() {b.selected=i==world.selectedSnack.rawValue;b.needsDisplay=true}
         tools[0].title="投食"
@@ -122,9 +126,11 @@ final class ControlView: NSView {
         fillRound(CGRect(x:22,y:116,width:133,height:121),NSColor(hex:0xF0E0CE),15)
         fillRound(CGRect(x:169,y:116,width:133,height:121),NSColor(hex:0xDFE9DD),15)
         c.saveGState(); c.translateBy(x:78,y:141); c.rotate(by:0.05); Creatures.roach(c,phase:1.1,scale:0.56); c.restoreGState()
-        c.saveGState(); c.translateBy(x:232,y:145); c.rotate(by:-0.18); Creatures.ant(c,phase:1.5,scale:1.05); c.restoreGState()
+        c.saveGState(); c.translateBy(x:232,y:145)
+        if CharacterLibrary.shared.enabled {c.scaleBy(x:1.45,y:1.45);CharacterArt.draw(c,bug:Bug(id:0,species:.ant,p:.zero),clock:0)} else {c.rotate(by:-0.18);Creatures.ant(c,phase:1.5,scale:1.05)}
+        c.restoreGState()
         label("蟑螂帮",35,166,12,NSColor(hex:0x805538),.semibold,width:106)
-        label("蚂蚁军团",182,166,12,NSColor(hex:0x486852),.semibold,width:106)
+        label(CharacterLibrary.shared.enabled ? CharacterLibrary.shared.displayName+"小队" : "蚂蚁军团",182,166,12,NSColor(hex:0x486852),.semibold,width:106)
         label("\(world.roachFood)",33,184,30,Ink.forest,.bold,width:70)
         label("\(world.antFood)",180,184,30,Ink.forest,.bold,width:70)
         label("口粮",111,204,10,NSColor(hex:0x98755A),width:35)
