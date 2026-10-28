@@ -507,7 +507,10 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
         }
         c.restoreGState()
     }
-    if world.tool == .spray && world.interactive,let p=world.pointer {c.saveGState();c.translateBy(x:p.x-65,y:p.y+35);Creatures.aerosol(c);c.restoreGState()}
+    if world.tool == .spray && world.interactive,let p=world.pointer {
+        let firing=world.sprays.last.map{$0.p.distance(p)<160 ? max(0,1-$0.age/0.3) : 0} ?? 0
+        Creatures.aerosolTool(c,at:p,width:world.width,height:world.height,firing:firing)
+    }
     if world.tool == .shelter && world.interactive,let p=world.pointer {
         c.saveGState();c.setLineDash(phase:0,lengths:[3,4]);c.setStrokeColor(Ink.forest.withAlphaComponent(0.4).cgColor);c.setLineWidth(1)
         c.stroke(EggShelter(p:p).rect);c.restoreGState()

@@ -30,6 +30,13 @@ func renderFeatureChecks(to directory:String) {
     let lay=empty();lay.markShelter(V(x:650,y:400));var parent=Bug(id:7,species:.roach,p:V(x:570,y:400),angle:.pi);parent.breeder=true;parent.bulk=0.28;parent.shownBulk=0.28;lay.bugs=[parent];lay.eggs=[lay.emittedEgg(parent,id:20)]
     for (n,age) in [0.0,1.4,2.8].enumerated() {lay.eggs[0].layAge=age;lay.bugs[0].layTime=2.8-age;frame("egg-extrusion-\(n)",lay)}
     let poison=empty();poison.ecologyInteractive=true;poison.bugs=[Bug(id:1,species:.roach,p:V(x:600,y:400)),Bug(id:2,species:.ant,p:V(x:640,y:390))];poison.spray(V(x:600,y:400));poison.sprays[0].age=0.25
+    poison.tool = .spray;poison.pointer=V(x:600,y:400)
     frame("insecticide",poison)
+    for (n,age) in [0.04,0.16,0.6].enumerated() {poison.sprays[0].age=age;frame("insecticide-action-\(n)",poison)}
+    let closeup=characterBitmap(width:560,height:420){c in
+        fillRound(CGRect(x:0,y:0,width:560,height:420),Ink.cream,0)
+        c.translateBy(x:230,y:220);c.scaleBy(x:1.8,y:1.8);Creatures.aerosol(c,firing:0.6)
+    }
+    try! closeup.write(to:URL(fileURLWithPath:directory).appendingPathComponent("insecticide-bottle.png"))
     frame("controls",World(width:1200,height:800,seed:42),controls:true)
 }

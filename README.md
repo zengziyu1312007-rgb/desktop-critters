@@ -2,7 +2,9 @@
 
 选两种宠物，让它们住进电脑桌面。奶龙对老鼠、蟑螂对蚂蚁，或两张自己上传的图片：投食、繁殖、围攻、巨化，再用杀虫剂、拖鞋和扫把收拾战场。
 
-同一个仓库维护两套原生桌宠：**Mac v0.11.0**（Swift / AppKit）和 **Windows v0.11.0**（C# / WPF）。
+同一个仓库维护两套原生桌宠：**Mac v0.11.1**（Swift / AppKit）和 **Windows v0.11.1**（C# / WPF）。
+
+v0.11.1把喷药道具换成醒目的红黄大喷罐，瓶身竖排“敌敌畏”；喷射时有喷头按压、后坐力、亮色射流和液滴。
 
 ## 下载与开启
 
@@ -10,12 +12,12 @@
 
 | 平台 | 下载 | 兼容范围 |
 | --- | --- | --- |
-| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
-| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.0/DesktopCritters-v0.11.0-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
+| Windows | [安装包](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.1/DesktopCritters-v0.11.1-Windows-x64-Setup.exe) · [免安装ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.1/DesktopCritters-v0.11.1-Windows-x64-Portable.zip) | Windows 10/11 x64，首版以主显示器桌面为活动区域 |
+| Mac | [Mac ZIP](https://github.com/zengziyu1312007-rgb/desktop-critters/releases/download/v0.11.1/DesktopCritters-v0.11.1-macOS-arm64.zip) | macOS 13+、Apple Silicon（M系列）；Intel Mac暂不支持 |
 
 两端安装包都不要求另装开发环境。Windows运行安装包后从开始菜单打开；Mac解压后双击“桌面有点脏.app”。安装仍需用户确认。
 
-v0.11.0将角色换装与生态统一：左右两队都能独立选角色或导入图片，保留飞行、五类外敌、可见产卵、文件夹藏卵与杀虫剂。旧版包继续保留。Mac的Bundle ID和原存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
+v0.11.1将角色换装与生态统一：左右两队都能独立选角色或导入图片，保留飞行、五类外敌、可见产卵、文件夹藏卵与杀虫剂。旧版包继续保留。Mac的Bundle ID和原存档路径保留。Windows独立安装与保存，不读取或覆盖Mac存档。完整[跨平台安排](docs/cross-platform.md)和[Windows说明](windows/README.md)。
 
 当前两个平台都尚未进行商业证书签名／公证，系统可能显示发布者提示。首版Windows的多屏、部分缩放与实际鼠标体验仍待更多真机反馈。
 

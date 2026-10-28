@@ -1,20 +1,52 @@
 import AppKit
 
 extension Creatures {
-    static func aerosol(_ c:CGContext) {
-        shadedOval(c,CGRect(x:-12,y:-26,width:24,height:54),NSColor(hex:0xE1E4DD),NSColor(hex:0x839087))
-        c.setFillColor(NSColor(hex:0x4C7153).cgColor);c.fill(CGRect(x:-11,y:-3,width:22,height:20))
-        c.setFillColor(NSColor(hex:0xDBDCD4).cgColor);c.fill(CGRect(x:-8,y:-33,width:16,height:10))
-        line(c,[CGPoint(x:0,y:-33),CGPoint(x:15,y:-33)],NSColor(hex:0x3A443B),4)
-        for n in -2...2 {line(c,[CGPoint(x:18,y:-33),CGPoint(x:36,y:-33+Double(n)*6)],NSColor(hex:0xBACBB2,alpha:0.6),0.6)}
+    static func aerosol(_ c:CGContext,firing:Double=0) {
+        let kick=sin(max(0,min(1,firing))*Double.pi)
+        c.saveGState();c.translateBy(x:-kick*7,y:kick*3);c.rotate(by:-kick*0.055)
+        ellipse(c,CGRect(x:-40,y:71,width:82,height:15),NSColor.black.withAlphaComponent(0.16))
+        // Wide outlined can, bright enough to read against both light and dark desktops.
+        fillRound(CGRect(x:-37,y:-60,width:74,height:139),NSColor(hex:0x273A31),20)
+        fillRound(CGRect(x:-33,y:-56,width:66,height:131),NSColor(hex:0xFFD43D),17)
+        fillRound(CGRect(x:-28,y:-53,width:13,height:122),NSColor(hex:0xFFF18A,alpha:0.82),7)
+        fillRound(CGRect(x:23,y:-51,width:7,height:117),NSColor(hex:0xE7A728),4)
+        ellipse(c,CGRect(x:-31,y:-66,width:62,height:19),NSColor(hex:0xF6E8B8))
+        strokeRound(CGRect(x:-31,y:-66,width:62,height:19),NSColor(hex:0x273A31),10,3)
+        fillRound(CGRect(x:-14,y:-85+kick*3,width:29,height:24),NSColor(hex:0x24352D),6)
+        fillRound(CGRect(x:-22,y:-94+kick*3,width:75,height:25),NSColor(hex:0xD94532),7)
+        strokeRound(CGRect(x:-22,y:-94+kick*3,width:75,height:25),NSColor(hex:0x273A31),7,3)
+        fillRound(CGRect(x:-14,y:-90+kick*3,width:56,height:6),NSColor(hex:0xFF8464),3)
+        fillRound(CGRect(x:45,y:-90+kick*3,width:14,height:16),NSColor(hex:0x273A31),4)
+        ellipse(c,CGRect(x:49,y:-86+kick*3,width:6,height:8),NSColor(hex:0xA4DAC5))
+        fillRound(CGRect(x:-28,y:-32,width:56,height:94),NSColor(hex:0xFFF9DF),9)
+        strokeRound(CGRect(x:-28,y:-32,width:56,height:94),NSColor(hex:0xC93B2A),9,2.5)
+        label("杀虫剂",-27,-50,10,NSColor(hex:0xA82B24),.heavy,width:54,align:.center)
+        for (i,word) in ["敌","敌","畏"].enumerated() {
+            label(word,-22,-27+Double(i)*27,23,NSColor(hex:0xBA2E25),.heavy,width:44,align:.center)
+        }
+        for n in 0..<5 {line(c,[CGPoint(x:-25+Double(n)*11,y:68),CGPoint(x:-19+Double(n)*11,y:68)],NSColor(hex:0x273A31),3)}
+        // A few nozzle glints make the idle tool readable before the first click.
+        if firing>0 {
+            for n in -2...2 {line(c,[CGPoint(x:63,y:-82),CGPoint(x:82+Double(abs(n))*7,y:-82+Double(n)*7)],NSColor(hex:0xE7FF9E,alpha:firing),2)}
+        }
+        c.restoreGState()
+    }
+    static func aerosolTool(_ c:CGContext,at p:V,width:Double,height:Double,firing:Double=0) {
+        let x=min(max(43,p.x-105),max(43,width-65)),y=min(max(99,p.y+82),max(99,height-85))
+        c.saveGState();c.translateBy(x:x,y:y);aerosol(c,firing:firing);c.restoreGState()
     }
     static func sprayMist(_ c:CGContext,_ cloud:SprayCloud) {
-        let t=min(1,cloud.age/1.2),fade=(1-t)*0.32
-        for n in 0..<26 {
-            let a=Double(n)*2.39996,reach=(20+Double(n%7)*10)*(0.3+t*1.4),r=9+Double(n%4)*5
-            ellipse(c,CGRect(x:cloud.p.x+cos(a)*reach-r,y:cloud.p.y+sin(a)*reach*0.7-t*24-r,width:r*2,height:r*2),NSColor(hex:n%3==0 ? 0xCCD8BF : 0xDDE5D4,alpha:fade))
+        let t=min(1,cloud.age/1.2),fade=(1-t)*0.4
+        // The bright pressure jet and expanding droplets read as a spray, not a quiet fog.
+        if cloud.age<0.3 {
+            let jet=1-cloud.age/0.3
+            for n in -2...2 {line(c,[CGPoint(x:cloud.p.x-50,y:cloud.p.y),CGPoint(x:cloud.p.x+50+Double(2-abs(n))*22,y:cloud.p.y+Double(n)*(9+t*14))],NSColor(hex:n==0 ? 0xF8FFE1 : 0xC3E28C,alpha:jet*0.78),n==0 ? 5 : 2)}
         }
-        c.saveGState();c.translateBy(x:cloud.p.x-65,y:cloud.p.y+35);c.setAlpha(max(0,1-t*2));aerosol(c);c.restoreGState()
+        for n in 0..<30 {
+            let a=Double(n)*2.39996,reach=(20+Double(n%7)*10)*(0.3+t*1.4),r=9+Double(n%4)*5
+            ellipse(c,CGRect(x:cloud.p.x+cos(a)*reach-r,y:cloud.p.y+sin(a)*reach*0.7-t*24-r,width:r*2,height:r*2),NSColor(hex:n%3==0 ? 0xB9D97B : 0xE7F2CC,alpha:fade))
+            if n%3==0 {ellipse(c,CGRect(x:cloud.p.x+cos(a)*reach,y:cloud.p.y+sin(a)*reach*0.6,width:3,height:3),NSColor(hex:0xF5FFD8,alpha:(1-t)*0.7))}
+        }
     }
     static func flyingWings(_ c:CGContext,phase:Double,open:Double) {
         guard open>0 else {return}

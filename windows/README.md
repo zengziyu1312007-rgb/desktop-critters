@@ -1,10 +1,10 @@
 # Windows 原生工程
 
-Windows 0.11.0，使用 C# / WPF / .NET 10。Mac 工程继续保留在仓库根目录，Windows 在本目录独立构建。
+Windows 0.11.1，使用 C# / WPF / .NET 10。Mac 工程继续保留在仓库根目录，Windows 在本目录独立构建。
 
 ## 使用
 
-下载 Releases 中的 `DesktopCritters-v0.11.0-Windows-x64-Setup.exe`，双击安装后从开始菜单打开“桌面有点脏”。安装包包含运行环境，按当前用户安装，不要求另装 .NET，也不设置开机自启。
+下载 Releases 中的 `DesktopCritters-v0.11.1-Windows-x64-Setup.exe`，双击安装后从开始菜单打开“桌面有点脏”。安装包包含运行环境，按当前用户安装，不要求另装 .NET，也不设置开机自启。
 
 也可以下载 `Portable.zip`，解压到独立文件夹并运行 `DesktopCritters.exe`。
 
@@ -40,6 +40,6 @@ dotnet run --project tests/WindowsCore.Tests.csproj -c Release
 
 Windows应用和安装包尚未进行商业证书签名，系统可能显示发布者提示。
 
-## v0.11.0 新玩法
+## v0.11.1 新玩法
 
 8惊飞成蟑，9标记文件夹背后的藏卵处，0使用杀虫剂。产卵先排出卵，再孵化；文件夹位置由本人手动标记，不读取文件，移动图标需重新标记。外敌选择框可召唤蜘蛛、甲虫、蜈蚣、蛇或老鼠，一次一只。
