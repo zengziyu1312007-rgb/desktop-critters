@@ -40,6 +40,9 @@ func runCharacterTests() {
     check(loaded.selectedID==custom.id && loaded.image(for:custom.id) != nil,"custom image survives reopening")
     let bad=base.appendingPathComponent("invalid.png");try! Data("invalid".utf8).write(to:bad)
     do {_ = try library.importImage(bad);check(false,"invalid image rejects")}catch{check(library.selectedID==custom.id,"invalid image does not erase working selection")}
+    let invisible=base.appendingPathComponent("invisible.png")
+    try! characterBitmap(width:16,height:16){$0.clear(CGRect(x:0,y:0,width:16,height:16))}.write(to:invisible)
+    do {_ = try library.importImage(invisible);check(false,"transparent image rejects")}catch{check(library.selectedID==custom.id,"transparent image preserves choice")}
     let config=base.appendingPathComponent("appearance-v1.json")
     let malicious="{\"version\":1,\"selected\":\"custom-bad\",\"customs\":[{\"id\":\"custom-bad\",\"name\":\"bad\",\"tag\":\"\",\"effect\":\"stars\",\"color\":0,\"file\":\"../outside.png\",\"custom\":true}]}"
     try! Data(malicious.utf8).write(to:config)
@@ -101,5 +104,9 @@ func renderCharacters(to directory:String) {
     let bitmap=content.bitmapImageRepForCachingDisplay(in:content.bounds)!
     content.cacheDisplay(in:content.bounds,to:bitmap)
     try! bitmap.representation(using:.png,properties:[:])!.write(to:dir.appendingPathComponent("Mac角色换装面板.png"))
+    let controls=ControlView(world:world)
+    let controlBitmap=controls.bitmapImageRepForCachingDisplay(in:controls.bounds)!
+    controls.cacheDisplay(in:controls.bounds,to:controlBitmap)
+    try! controlBitmap.representation(using:.png,properties:[:])!.write(to:dir.appendingPathComponent("Mac控制面板.png"))
     print(dir.path)
 }
