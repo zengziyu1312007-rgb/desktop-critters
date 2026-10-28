@@ -27,7 +27,7 @@ enum Snack: Int, CaseIterable, Codable {
 }
 enum AdultRole: String, Codable { case worker, scout, soldier, breeder }
 enum PlayMode { case companion, battle, result }
-enum Tool: Int { case food = 0, grab = 1, slipper = 2, clean = 3, observe = 4, roachEgg = 5, antEgg = 6 }
+enum Tool: Int { case food = 0, grab = 1, slipper = 2, clean = 3, observe = 4, roachEgg = 5, antEgg = 6, shelter = 8, spray = 9 }
 struct Bug: Codable {
     let id: Int
     let species: Species
@@ -73,6 +73,9 @@ struct Bug: Codable {
     var bodyScale: Double { (0.38 + 0.62 * growth) * (adult ? (role == .soldier ? 1.18 : (role == .scout ? 0.86 : (role == .breeder ? 1.1 : 1))) : 1) }
     var adult: Bool { growth >= 1 }
     var targetFood: Int? = nil
+    var flight:RoachFlight? = nil
+    var flightWait:Double? = nil
+    var layTime:Double? = nil
 }
 struct Egg: Codable {
     let id: Int
@@ -82,6 +85,9 @@ struct Egg: Codable {
     let hatchTime: Double
     let generation: Int
     var brood: Int = 1
+    var layStart:V? = nil
+    var layAge:Double? = nil
+    var parentID:Int? = nil
     var progress: Double { min(1, age / hatchTime) }
 }
 struct Corpse: Codable { var bug: Bug }
@@ -122,8 +128,8 @@ enum Relations:String,Codable {
     var title:String { self == .hostile ? "交战" : (self == .truce ? "停火" : "建交通商") }
 }
 enum AttackStyle:String { case bite, pincer, ram, swarm, web }
-enum InvaderKind:String,Codable { case spider, beetle
-    var title:String {self == .spider ? "游猎蜘蛛" : "抢粮甲虫"}
+enum InvaderKind:String,Codable,CaseIterable { case spider, beetle, centipede, snake, rat
+    var title:String {["游猎蜘蛛","抢粮甲虫","游猎蜈蚣","伏击蛇","抢粮老鼠"][Self.allCases.firstIndex(of:self)!]}
 }
 struct Invader:Codable {
     let id:Int;let kind:InvaderKind
@@ -165,12 +171,17 @@ struct EcologySave:Codable {
     var reports:[DailyReport];var random:SeedRandom
     var invaders:[Invader]? = nil
     var splats:[JuiceSplat]? = nil
+    var shelters:[EggShelter]? = nil
 }
 
 final class World {
     var width: Double; var height: Double
     var random: SeedRandom
     var bugs: [Bug] = []
+    var sprays:[SprayCloud]=[]
+    var sprayCooldown:Double=0
+    var shelters:[EggShelter]=[]
+    var flightRandom=SeedRandom(value:0xF17A739)
     var foods: [Food] = []
     var eggs: [Egg] = []
     var corpses: [Corpse] = []
@@ -231,7 +242,7 @@ final class World {
     }
     func saveData() throws -> Data {
         var state=EcologySave(width:width,height:height,bugs:bugs,eggs:eggs,foods:foods,corpses:corpses,archived:archivedCorpses,bugSerial:bugSerial,foodSerial:foodSerial,roachFood:roachFood,antFood:antFood,roachBirthTimer:roachBirthTimer,antBirthTimer:antBirthTimer,hatched:hatchedCount,matured:maturedCount,deaths:combatDeaths,clock:clock,relations:relations,relationAge:relationAge,deathsAtPeace:deathsAtPeace,reports:reports,random:random)
-        state.invaders=invaders;state.splats=splats
+        state.invaders=invaders;state.splats=splats;state.shelters=shelters
         return try JSONEncoder().encode(state)
     }
     func restore(_ data:Data) throws {
@@ -240,7 +251,7 @@ final class World {
         guard s.version==1,s.bugs.count<=300,s.eggs.count<=300,s.foods.count<=18,s.corpses.count<=160,
               s.width>0,s.height>0,Set(ids).count==ids.count,ids.allSatisfy({$0<s.bugSerial}),s.reports.count<=90 else {throw NSError(domain:"EcologySave",code:1)}
         guard s.bugs.allSatisfy({($0.bulk ?? 0).isFinite && (0...1).contains($0.bulk ?? 0)}),
-              (s.invaders ?? []).count<=8,(s.splats ?? []).count<=96,
+              (s.invaders ?? []).count<=8,(s.splats ?? []).count<=96,(s.shelters ?? []).count<=6,(s.shelters ?? []).allSatisfy({$0.p.x.isFinite && $0.p.y.isFinite}),
               (s.splats ?? []).allSatisfy({ j in
                   j.p.x.isFinite && j.p.y.isFinite && j.radius.isFinite && j.radius>0 && j.radius<=240 && j.angle.isFinite && j.age.isFinite && j.age>=0 && j.drops.count<=64 &&
                   j.drops.allSatisfy{$0.offset.x.isFinite && $0.offset.y.isFinite && $0.radius.isFinite && $0.radius>0 && $0.radius<=80 && $0.flight.isFinite && $0.flight>0 && $0.flight<=2}
@@ -251,7 +262,7 @@ final class World {
         roachFood=s.roachFood;antFood=s.antFood;roachBirthTimer=s.roachBirthTimer;antBirthTimer=s.antBirthTimer
         hatchedCount=s.hatched;maturedCount=s.matured;combatDeaths=s.deaths;clock=s.clock
         relations=s.relations;relationAge=s.relationAge;deathsAtPeace=s.deathsAtPeace;reports=s.reports;random=s.random
-        invaders=s.invaders ?? [];splats=(s.splats ?? []).map{var j=$0;j.age=max(1,j.age);return j};sweeps=[];fights=[]
+        shelters=s.shelters ?? [];invaders=s.invaders ?? [];splats=(s.splats ?? []).map{var j=$0;j.age=max(1,j.age);return j};sweeps=[];fights=[]
         rebalanceGrowth();resize(width:newWidth,height:newHeight);ensureDay()
     }
     var selectedSnack:Snack = .cookie
@@ -351,7 +362,7 @@ final class World {
     }
     func populate(battle: Bool) {
         bugs.removeAll(); foods.removeAll(); trails.removeAll(); puffs.removeAll();fights.removeAll();sweeps=[];invaders=[];invasionTimer=140
-        eggs.removeAll(); corpses.removeAll(); splats=[]; archivedCorpses = 0
+        eggs.removeAll(); corpses.removeAll(); splats=[];sprays=[];sprayCooldown=0; archivedCorpses = 0
         roachFood = 120; antFood = 180; roachBirthTimer = 6; antBirthTimer = 5
         combatDeaths=0; combatTimer=0;relations = .hostile;relationAge=0;deathsAtPeace=0
         hatchedCount = 0; maturedCount = 0; watchedID = nil
@@ -461,6 +472,7 @@ final class World {
         var subject=bugs[index];bite(&subject,food:food);bugs[index]=subject
     }
     func bite(_ b:inout Bug,food index:Int) {
+        guard b.flight == nil else {return}
         guard foods.indices.contains(index),foods[index].portions>0,b.cooldown<=0 else {return}
         let oldMorph=b.morph,oldHealth=b.toughness,oldGrowth=b.growth
         let giant=foods[index].snack.giant && foods[index].original>5
@@ -510,70 +522,17 @@ final class World {
     @discardableResult func summonInvader(_ kind:InvaderKind?=nil)->Bool {
         guard !invaders.contains(where:{!$0.dead}) else {say("外敌还在桌面上。",force:true);return false}
         invasionSerial += 1
-        let chosen=kind ?? (invasionSerial%2==1 ? .spider : .beetle)
+        let chosen=kind ?? InvaderKind.allCases[(invasionSerial-1)%InvaderKind.allCases.count]
         let id=(invaders.map{$0.id}.max() ?? 1000000)+1
         let p=V(x:field.midX,y:field.minY+90)
         let strength=1+(bugs.map{$0.bulkValue}.max() ?? 0)*2.5
-        invaders.append(Invader(id:id,kind:chosen,p:p,health:(chosen == .spider ? 95 : 150)*strength))
+        invaders.append(Invader(id:id,kind:chosen,p:p,health:chosen.baseHealth*strength))
         if invaders.count>8 {invaders.removeFirst(invaders.count-8)}
         record("外敌来袭：\(chosen.title)闯入桌面，双方各自迎敌")
-        say(chosen == .spider ? "蜘蛛来了，会吐丝缠住虫群。" : "甲虫来了，正冲向食物。",force:true)
+        say(chosen.introduction,force:true)
         invasionTimer=180;return true
     }
-    func updateInvaders(_ dt:Double) {
-        invasionTimer -= dt
-        if invasionTimer<=0 && bugs.count>=30 {_ = summonInvader()}
-        for n in invaders.indices where !invaders[n].dead {
-            var v=invaders[n];v.age += dt;v.cooldown -= dt
-            if v.age>38 {
-                v.p=v.p+(V(x:field.maxX+150,y:field.minY-150)-v.p).unit*(dt*150)
-                invaders[n]=v;continue
-            }
-            let target=bugs.indices.min{bugs[$0].p.distance(v.p)<bugs[$1].p.distance(v.p)}
-            var goal=target.map{bugs[$0].p} ?? V(x:field.midX,y:field.midY)
-            if v.kind == .beetle, let food=foods.min(by:{$0.p.distance(v.p)<$1.p.distance(v.p)}) {goal=food.p}
-            let d=goal-v.p
-            v.angle=atan2(d.y,d.x);v.phase += dt*(v.kind == .spider ? 12 : 8)
-            if d.length>45 {v.p=safe(v.p+d.unit*dt*(v.kind == .beetle && v.cooldown<0.6 ? 155 : 60))}
-            if v.cooldown<=0 {
-                var harmed=false
-                for i in bugs.indices where bugs[i].p.distance(v.p)<radius(bugs[i])+90 {
-                    guard bugs[i].id != grabbedID else {continue}
-                    let range=bugs[i].p.distance(v.p)
-                    if range<radius(bugs[i])+64 {
-                        bugs[i].health -= v.kind == .spider ? 1.4 : 2
-                        bugs[i].hitTime=0.3
-                        if v.kind == .spider {bugs[i].webTime=2.8}
-                        else {bugs[i].p=safeBug(bugs[i].p+(bugs[i].p-v.p).unit*22,bugs[i])}
-                        harmed=true
-                    }
-                    // Each nearby adult actually counterattacks, even during a treaty.
-                    if bugs[i].adult {
-                        v.health -= 1.8*(1+bugs[i].bulkValue*7)
-                        bugs[i].fightTime=0.6;bugs[i].fightTarget=v.p
-                        if fights.count<64 {fights.append(FightEffect(attacker:bugs[i].id,defender:v.id,from:bugs[i].p,to:v.p,swarm:false,heavy:bugs[i].bulkValue>0.4,style:bugs[i].bulkValue>0.4 ? .ram : .pincer,size:1+bugs[i].bulkValue*2))}
-                    }
-                }
-                if harmed && fights.count<64 {fights.append(FightEffect(attacker:v.id,defender:target.map{bugs[$0].id} ?? -1,from:v.p,to:goal,swarm:false,heavy:true,style:v.kind == .spider ? .web : .ram,size:1.8))}
-                if v.kind == .beetle,let f=foods.indices.first(where:{foods[$0].p.distance(v.p)<foodRadius(foods[$0])+50}) {let taken=min(24,foods[f].portions);foods[f].portions -= taken;v.stolen += taken}
-                v.cooldown=v.kind == .spider ? 2.3 : 1.8
-                if v.dead {record("外敌被击退：\(v.kind.title)倒下，残骸留在桌面")}
-            }
-            invaders[n]=v
-        }
-        let escape=invaders.filter{!$0.dead && $0.age>42}
-        for v in escape {record("外敌撤离：\(v.kind.title)离开，抢走\(v.stolen)份口粮")}
-        invaders.removeAll{!$0.dead && $0.age>42}
-        let dead=bugs.filter{$0.health<=0}
-        if !dead.isEmpty {
-            ensureDay()
-            for var b in dead {if b.cargo>0 {_ = addFood(b.p,portions:b.cargo,announce:false)};b.cargo=0;b.fightTime=0;corpses.append(Corpse(bug:b));spillJuice(b,crushed:false);if b.species == .roach {reports[reports.count-1].roachLost += 1}else{reports[reports.count-1].antLost += 1}}
-            combatDeaths += dead.count
-            let ids=Set(dead.map{$0.id});bugs.removeAll{ids.contains($0.id)}
-            record("外敌袭击造成\(dead.count)只伤亡")
-            if corpses.count>160 {archivedCorpses += corpses.count-160;corpses.removeFirst(corpses.count-160)}
-        }
-    }
+    func updateInvaders(_ dt:Double) {stepVisitors(dt)}
     @discardableResult func addFood(_ p: V, portions: Int? = nil, kind:Snack? = nil, announce: Bool = true) -> Bool {
         guard foods.count < 18 else { if announce { say("桌面够吃啦，等它们搬完一些。",force:true) }; return false }
         foodSerial += 1
@@ -603,21 +562,25 @@ final class World {
     }
     func press(_ p: V) {
         guard interactive else { return }
+        if tool == .shelter {markShelter(p);return}
         if tool == .observe { observe(p); return }
         if tool == .roachEgg { _ = placeEgg(.roach,at:p); return }
         if tool == .antEgg { _ = placeEgg(.ant,at:p); return }
         guard !paused else { return }
         pointer = p
         switch tool {
+        case .spray:spray(p)
+        case .shelter:markShelter(p)
         case .roachEgg: _ = placeEgg(.roach,at:p)
         case .antEgg: _ = placeEgg(.ant,at:p)
         case .observe: observe(p)
         case .food:
             let subject=bugs.indices.filter{bodyHit(bugs[$0],p,padding:5)}.max{bugs[$0].p.y<bugs[$1].p.y}
             let drop=subject.map{bugs[$0].p+V(x:cos(bugs[$0].angle),y:sin(bugs[$0].angle))*(radius(bugs[$0])+20*snackScale(selectedSnack))} ?? p
-            if addFood(drop),let i=subject {biteBug(at:i,food:foods.count-1)}
+            if addFood(drop),let i=subject,bugs[i].flight == nil {biteBug(at:i,food:foods.count-1)}
         case .grab:
             if let b = bugs.filter({bodyHit($0,p,padding:10)}).max(by:{$0.p.y<$1.p.y}) {
+                if let i=bugs.firstIndex(where:{$0.id==b.id}) {bugs[i].flight=nil;bugs[i].flightWait=12}
                 grabbedID = b.id; say(b.species == .roach ? "逮到了！把它放到另一边试试。" : "轻拿轻放，搬运工也要休息。",force:true)
             } else { say("靠近一只虫子，按住拖走。",force:true) }
         case .slipper: swat(p)
@@ -626,6 +589,7 @@ final class World {
     }
     func drag(_ p: V) {
         pointer = p
+        if tool == .spray {spray(p)}
         if interactive && !paused && tool == .clean,let last=sweepAnchor,last.distance(p)>24 {
             let steps=max(1,Int(ceil(last.distance(p)/24)))
             for n in 1...steps {sweep(last+(p-last)*(Double(n)/Double(steps)))}
@@ -645,7 +609,7 @@ final class World {
         if !victims.isEmpty {record("拖鞋拍死 \(victims.count) 只，尸体留在桌面")}
         for victim in victims {
             if victim.cargo > 0 { _ = addFood(victim.p,portions:victim.cargo,announce:false) }
-            var body = victim; body.cargo = 0; body.speed = 0; body.flipped = 0
+            var body = victim; body.cargo = 0; body.speed = 0; body.flipped = 0;body.flight=nil
             corpses.append(Corpse(bug:body));spillJuice(body,crushed:true)
             if grabbedID == victim.id { grabbedID = nil }
         }
@@ -654,7 +618,8 @@ final class World {
         for i in invaders.indices where !invaders[i].dead && invaders[i].p.distance(p)<100 {invaders[i].health=0;record("拖鞋击倒\(invaders[i].kind.title)")}
         let oldEggs = eggs.count
         eggs.removeAll{$0.p.distance(p)<66}
-        for i in bugs.indices where bugs[i].p.distance(p)<150 { bugs[i].scared = 2 }
+        for i in bugs.indices where bugs[i].p.distance(p)<250 { bugs[i].scared = 2 }
+        _ = scareRoaches(at:p)
         if corpses.count > 160 {
             let excess = corpses.count-160
             archivedCorpses += excess; corpses.removeFirst(excess)
@@ -662,11 +627,16 @@ final class World {
         say(victims.isEmpty && oldEggs == eggs.count ? "没拍着。它们倒是吓了一跳。" : "拍死 \(victims.count) 只 · 碎卵 \(oldEggs-eggs.count) 枚。按 4 清扫。",force:true)
     }
     func lifecycle(_ dt: Double) {
+        for i in bugs.indices {bugs[i].layTime=max(0,(bugs[i].layTime ?? 0)-dt)}
         // Eggs are prepaid; surviving eggs can hatch even if the adults are killed.
-        for i in eggs.indices { eggs[i].age += dt }
+        for i in eggs.indices {
+            let old=eggs[i].layAge ?? 3
+            if eggs[i].layAge != nil {eggs[i].layAge=min(3,old+dt)}
+            eggs[i].age += max(0,dt-max(0,2.8-old))
+        }
         for i in eggs.indices where eggs[i].progress >= 1 {
             let egg=eggs[i]
-            let p = safe(egg.p + V(x:random.range(-14,14),y:random.range(-14,14)))
+            let p = hatchPoint(egg)
             var child = Bug(id:bugSerial,species:egg.species,p:p,angle:random.range(-3.14,3.14),wander:p)
             child.growth = 0; child.generation = egg.generation
             child.breeder = egg.species == .roach ? bugSerial % 2 == 0 : bugSerial % 19 == 0
@@ -700,20 +670,23 @@ final class World {
             let timer = roach ? roachBirthTimer : antBirthTimer
             let stock = roach ? roachFood : antFood
             let cost = roach ? 4 : 1
-            let parents=bugs.filter{$0.species == species && $0.adult && $0.breeder && $0.id != grabbedID}
+            let parents=bugs.filter{$0.species == species && $0.adult && $0.breeder && $0.id != grabbedID && $0.flight == nil && ($0.layTime ?? 0)<=0}
             guard timer <= 0, stock >= cost, !parents.isEmpty else {continue}
             let batch=roach ? min(3,parents.count) : min(8,parents.count*3)
             for n in 0..<batch {
                 let available=roach ? roachFood : antFood
                 guard available>=cost, reserved(species)+(roach ? 3 : 1)<=populationLimit(species) else {break}
-                let parent=parents[n % parents.count],nest=roach ? roachNest : antNest
-                let p=safe(nest+V(x:random.range(-65,65),y:random.range(-105,-25)))
-                eggs.append(Egg(id:bugSerial,species:species,p:p,hatchTime:roach ? 28 : 22,generation:parent.generation+1,brood:roach ? 3 : 1))
+                var parent=parents[n % parents.count]
+                if let place=shelters.min(by:{$0.p.distance(parent.p)<$1.p.distance(parent.p)}),place.p.distance(parent.p)<radius(parent)+100 {parent.angle=atan2(parent.p.y-place.p.y,parent.p.x-place.p.x)}
+                var e=emittedEgg(parent,id:bugSerial)
+                if n>=parents.count {e.p=e.p+V(x:Double(n%3)*4,y:Double(n/3)*3)}
+                eggs.append(e)
+                if let i=bugs.firstIndex(where:{$0.id==parent.id}) {bugs[i].layTime=2.8;bugs[i].angle=parent.angle}
                 bugSerial += 1
                 if roach {roachFood -= cost} else {antFood -= cost}
             }
             if roach {roachBirthTimer=16} else {antBirthTimer=8}
-            say(roach ? "窝边多了一枚卵鞘，正在孵化。" : "蚁后产卵了，窝边开始育幼。")
+            say(roach ? "成蟑停下来，正在从腹部排出卵鞘。" : "蚁后停下来，正在产卵。")
         }
     }
     func resolveCrowding(_ elapsed:Double) {
@@ -723,10 +696,10 @@ final class World {
         let snapshot=bugs
         let sizes=Dictionary(uniqueKeysWithValues:snapshot.map{($0.id,radius($0))})
         var pairs:[(Int,Int)]=[]
-        for i in snapshot.indices where snapshot[i].adult && snapshot[i].id != grabbedID {
+        for i in snapshot.indices where snapshot[i].adult && snapshot[i].flight == nil && snapshot[i].id != grabbedID {
             let b=snapshot[i]
             let nearby=snapshot.indices.filter{snapshot[$0].id != b.id && snapshot[$0].p.distance(b.p)<max(100,(sizes[b.id] ?? 0)+(sizes[snapshot[$0].id] ?? 0)+55)}
-            let enemies=nearby.filter{snapshot[$0].species != b.species && snapshot[$0].adult && snapshot[$0].id != grabbedID}
+            let enemies=nearby.filter{snapshot[$0].species != b.species && snapshot[$0].flight == nil && snapshot[$0].adult && snapshot[$0].id != grabbedID}
             let locked=enemies.first{snapshot[$0].id==b.opponentID}
             let defending=enemies.first{snapshot[$0].opponentID==b.id}
             let contested=foods.contains{$0.portions>0 && $0.p.distance(b.p)<85+foodRadius($0)+radius(b)}
@@ -770,7 +743,7 @@ final class World {
         guard !victims.isEmpty else {return}
         for var b in victims {
             if b.cargo>0 {_ = addFood(b.p,portions:b.cargo,announce:false)}
-            b.cargo=0;b.speed=0;b.fightTime=0;b.opponentID=nil;b.fightTarget=nil;b.hitTime=nil
+            b.cargo=0;b.flight=nil;b.speed=0;b.fightTime=0;b.opponentID=nil;b.fightTarget=nil;b.hitTime=nil
             corpses.append(Corpse(bug:b));spillJuice(b,crushed:false);combatDeaths += 1
             ensureDay();if b.species == .roach {reports[reports.count-1].roachLost += 1} else {reports[reports.count-1].antLost += 1}
         }
@@ -785,10 +758,11 @@ final class World {
         fights.removeAll();sweeps.removeAll()
         let sx = width/self.width, sy = height/self.height
         self.width = width; self.height = height
-        for i in bugs.indices { bugs[i].p = safeBug(V(x:bugs[i].p.x*sx,y:bugs[i].p.y*sy),bugs[i]) }
+        for i in bugs.indices { bugs[i].flight=nil;bugs[i].layTime=0;bugs[i].p = safeBug(V(x:bugs[i].p.x*sx,y:bugs[i].p.y*sy),bugs[i]) }
         for i in foods.indices { foods[i].p = safe(V(x:foods[i].p.x*sx,y:foods[i].p.y*sy)) }
         for i in invaders.indices {invaders[i].p=safe(V(x:invaders[i].p.x*sx,y:invaders[i].p.y*sy))}
-        for i in eggs.indices { eggs[i].p = safe(V(x:eggs[i].p.x*sx,y:eggs[i].p.y*sy)) }
+        for i in eggs.indices { eggs[i].layAge=3;eggs[i].layStart=nil;eggs[i].p = safe(V(x:eggs[i].p.x*sx,y:eggs[i].p.y*sy)) }
+        for i in shelters.indices {shelters[i].p=safe(V(x:shelters[i].p.x*sx,y:shelters[i].p.y*sy))}
         for i in corpses.indices { corpses[i].bug.p = safe(V(x:corpses[i].bug.p.x*sx,y:corpses[i].bug.p.y*sy)) }
         let inkScale=min(sx,sy)
         for i in splats.indices {
@@ -802,6 +776,7 @@ final class World {
         let dt = min(max(delta,0),0.08)
         dateCheck += dt
         if dateCheck>1 {ensureDay();dateCheck=0}
+        sprayCooldown=max(0,sprayCooldown-dt);for i in sprays.indices {sprays[i].age += dt};sprays.removeAll{$0.age>1.2};for cloud in sprays where cloud.age<0.75 {_ = poisonBugs(at:cloud.p)}
         clock += dt; notice.time -= dt; eventCooldown -= dt; slapTime = max(0,slapTime-dt)
         for i in splats.indices {splats[i].age=min(4,splats[i].age+dt)}
         for i in sweeps.indices {sweeps[i].age += dt};sweeps.removeAll{$0.age >= $0.duration}
@@ -844,11 +819,15 @@ final class World {
         for i in bugs.indices {
             if bugs[i].id == grabbedID { continue }
             var b = bugs[i]
+            if (b.layTime ?? 0)>0 {b.speed=0;b.phase += dt*1.5;bugs[i]=b;continue}
+            b.flightWait=max(0,(b.flightWait ?? Double(8+b.id%13))-dt)
+            if b.flight == nil && b.cargo==0 && (b.flightWait ?? 0)<=0 && b.fightTime<=0 && b.opponentID == nil && bugs.filter({$0.flight != nil}).count<2 {_ = beginFlight(&b)}
+            if fly(&b,dt) {bugs[i]=b;continue}
             let selfRadius=sizes[b.id] ?? 0
             let local=neighbors(b.p)
             let localIDs=Set(local.map{$0.id})
             let extra=(selfRadius>55 ? snapshot : large).filter{!localIDs.contains($0.id) && $0.p.distance(b.p)<(sizes[$0.id] ?? 0)+selfRadius+55}
-            let nearby=local+extra
+            let nearby=(local+extra).filter{$0.flight == nil}
             b.fightTime=max(0,b.fightTime-dt)
             b.hitTime=max(0,(b.hitTime ?? 0)-dt)
             b.webTime=max(0,(b.webTime ?? 0)-dt);b.bitePulse=max(0,(b.bitePulse ?? 0)-dt)
@@ -929,7 +908,7 @@ final class World {
             if relations == .hostile && b.adult && b.role == .soldier && b.cargo==0 && (isRoach ? roachFood : antFood)<8 && bugs.count>65 {
                 goal=isRoach ? antNest : roachNest;speed *= 1.15
             }
-            if relations == .hostile, let opponent=b.opponentID, let enemy=snapshot.first(where:{$0.id==opponent}) {
+            if relations == .hostile, let opponent=b.opponentID, let enemy=snapshot.first(where:{$0.id==opponent && $0.flight == nil}) {
                 b.fightTarget=enemy.p
                 let toEnemy=enemy.p-b.p
                 let attackers=snapshot.filter{$0.opponentID==enemy.id}.count
@@ -949,6 +928,7 @@ final class World {
                 b.angle=atan2(intruder.p.y-b.p.y,intruder.p.x-b.p.x)
                 if b.fightTime>0 {b.fightTarget=intruder.p}
             }
+            if let nursery=shelterGoal(b) {goal=nursery;hasGoal=true;b.angle=atan2(nursery.y-b.p.y,nursery.x-b.p.x)}
             if b.scared > 0 {
                 let source = slap ?? pointer ?? V(x:width/2,y:height/2)
                 goal = safe(b.p+(b.p-source).unit*140); speed *= 1.75
@@ -1284,5 +1264,7 @@ func runWorldTests() {
     var badSplats=badJuice["splats"] as! [[String:Any]];badSplats[0]["radius"] = -1;badJuice["splats"]=badSplats
     var rejectedInk=false;do {try afterGoo.restore(JSONSerialization.data(withJSONObject:badJuice))}catch{rejectedInk=true}
     check(rejectedInk,"invalid saved splash geometry is rejected before drawing")
+    runFlightVisitorTests {check($0,$1)}
+    runEggSprayTests {check($0,$1)}
     print("\(checks) checks passed")
 }

@@ -64,9 +64,9 @@ enum Creatures {
     }
     // Skeletal parts are drawn at a fixed local scale, head toward +X.
     // The gait moves alternating tripods; antennas bend independently.
-    static func roach(_ c: CGContext,phase: Double,flipped: Bool = false,scale: CGFloat = 1,alpha: CGFloat = 1) {
+    static func roach(_ c: CGContext,phase: Double,flipped: Bool = false,scale: CGFloat = 1,alpha: CGFloat = 1,flight:RoachFlight?=nil) {
         c.saveGState(); c.scaleBy(x:scale*roachSize,y:scale*roachSize); c.setAlpha(alpha)
-        ellipse(c,CGRect(x:-28,y:-8,width:56,height:24),NSColor.black.withAlphaComponent(0.15))
+        if flight == nil {ellipse(c,CGRect(x:-28,y:-8,width:56,height:24),NSColor.black.withAlphaComponent(0.15))}
         let leg = NSColor(hex:0x61351D)
         for side in [-1.0,1.0] {
             for n in 0..<3 {
@@ -90,6 +90,7 @@ enum Creatures {
                 line(c,[foot,CGPoint(x:toeX,y:toeY),CGPoint(x:toeX+2,y:toeY-side*1.4)],leg,0.55)
             }
         }
+        if let flight=flight {flyingWings(c,phase:phase,open:flight.open)}
         // The pronotum and wing casing are a photographic cutout, not painted ellipses.
         let body=photoBody, bodyHeight=52*body.size.height/body.size.width
         c.saveGState()
@@ -195,7 +196,7 @@ enum Creatures {
             ant(c,phase:dead ? 0 : b.phase,alpha:alpha,morph:b.morph)
             return
         }
-        roach(c,phase:dead ? 0 : b.phase,flipped:dead,alpha:alpha)
+        roach(c,phase:dead ? 0 : b.phase,flipped:dead,alpha:alpha,flight:dead ? nil : b.flight)
         c.saveGState();c.scaleBy(x:roachSize,y:roachSize);c.setAlpha(alpha)
         if b.morph<2 {
             // Wingless, segmented nymph abdomen; adult photographic wings appear later.
@@ -207,6 +208,7 @@ enum Creatures {
     }
     static func outsider(_ c:CGContext,_ v:Invader,alpha:Double=1) {
         c.saveGState();c.setAlpha(alpha);c.rotate(by:v.angle)
+        if v.kind == .centipede || v.kind == .snake || v.kind == .rat {visitorBody(c,v);c.restoreGState();return}
         if v.kind == .spider {
             for side in [-1.0,1.0] {for n in 0..<4 {
                 let x=Double(n)*9-13,sway=sin(v.phase+Double(n)*1.8+side)*7
@@ -376,7 +378,15 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
         if f.original<=5 {Creatures.crumb(c,scale:1)} else {Creatures.snack(c,kind:f.snack,portions:f.portions,original:f.original,scale:world.snackScale(f.snack))}; c.restoreGState()
     }
     for egg in world.eggs {
-        c.saveGState(); c.translateBy(x:egg.p.x,y:egg.p.y)
+        c.saveGState()
+        if world.eggOccluded(egg) {
+            for place in world.shelters {
+                let clip=CGMutablePath();clip.addRect(CGRect(x:0,y:0,width:world.width,height:world.height));clip.addRect(place.rect)
+                c.addPath(clip);c.clip(using:.evenOdd)
+            }
+        }
+        let shown=egg.shownPoint;c.translateBy(x:shown.x,y:shown.y)
+        let emerging=0.15+0.85*min(1,egg.emission*2);c.scaleBy(x:emerging,y:1)
         // Stable orientation, small proportions and a contact shadow; no HUD around eggs.
         c.rotate(by:Double(egg.id % 17)*0.19-1.4)
         Creatures.egg(c,species:egg.species)
@@ -397,7 +407,12 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             ellipse(c,CGRect(x:world.width/2+Double(n%3)*5-8,y:world.height-50+Double(n/3)*3,width:8,height:4),NSColor(hex:0x514638,alpha:0.6))
         }
     }
-    for b in world.bugs.sorted(by:{$0.p.y<$1.p.y}) {
+    for cloud in world.sprays {Creatures.sprayMist(c,cloud)}
+    for b in world.bugs where b.flight != nil {
+        let k=world.scale(for:b),lift=b.flight!.lift
+        ellipse(c,CGRect(x:b.p.x-30*k+lift*0.35,y:b.p.y+lift,width:60*k,height:16*k),NSColor.black.withAlphaComponent(0.09))
+    }
+    for b in world.bugs.sorted(by:{if ($0.flight != nil) != ($1.flight != nil) {return $0.flight == nil};return $0.p.y<$1.p.y}) {
         c.saveGState()
         var shown=b.p
         if let target=b.fightTarget, b.fightTime>0 {
@@ -412,7 +427,7 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             c.translateBy(x:0,y:-12); c.scaleBy(x:1.13,y:1.13)
         }
         c.rotate(by:b.angle + (b.fightTime>0 ? sin(world.clock*35+Double(b.id))*0.22 : 0))
-        let breathing=1+sin(max(0,(b.bitePulse ?? 0))/0.55*Double.pi)*0.07
+        let breathing=1+sin(max(0,(b.bitePulse ?? 0))/0.55*Double.pi)*0.07+((b.layTime ?? 0)>0 ? sin(world.clock*9)*0.035 : 0)
         c.scaleBy(x:world.scale(for:b)*breathing,y:world.scale(for:b)*breathing)
         Creatures.bug(c,b,alpha:0.73+0.27*b.growth)
         if (b.webTime ?? 0)>0 {
@@ -481,6 +496,11 @@ func drawArena(_ world: World,in c: CGContext,showHint: Bool = true) {
             ellipse(c,CGRect(x:cos(a)*distance,y:sin(a)*distance+t*t*8,width:size,height:size),NSColor(hex:0xB49C74))
         }
         c.restoreGState()
+    }
+    if world.tool == .spray && world.interactive,let p=world.pointer {c.saveGState();c.translateBy(x:p.x-65,y:p.y+35);Creatures.aerosol(c);c.restoreGState()}
+    if world.tool == .shelter && world.interactive,let p=world.pointer {
+        c.saveGState();c.setLineDash(phase:0,lengths:[3,4]);c.setStrokeColor(Ink.forest.withAlphaComponent(0.4).cgColor);c.setLineWidth(1)
+        c.stroke(EggShelter(p:p).rect);c.restoreGState()
     }
     for stain in world.splats {drawJuice(c,stain,airborne:true)}
     for p in world.puffs {

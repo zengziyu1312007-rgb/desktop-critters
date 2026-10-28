@@ -61,9 +61,10 @@ final class ControlView: NSView {
         let names = ["丢饼干","搬个家","拍死","扫把"]
         let subtitles = ["投食 · 1","拖动 · 2","拖鞋 · 3","清扫 · 4"]
         for i in 0..<4 {
-            let b = ActionButton(names[i],frame:CGRect(x:22+i*72,y:389,width:64,height:58)){[weak self] in self?.onTool?(Tool(rawValue:i)!)}
+            let b = ActionButton(names[i],frame:CGRect(x:22+i*58,y:389,width:52,height:58)){[weak self] in self?.onTool?(Tool(rawValue:i)!)}
             b.subtitle=subtitles[i]; b.toolTip=subtitles[i]; addSubview(b); tools.append(b)
         }
+        let poison=ActionButton("杀虫剂",frame:CGRect(x:254,y:389,width:48,height:58)){[weak self] in self?.onTool?(.spray)};poison.subtitle="喷药 · 0";addSubview(poison)
         modeButton = ActionButton("回到工作",frame:CGRect(x:22,y:463,width:133,height:33)){[weak self] in self?.onCompanion?()}; addSubview(modeButton)
         pauseButton = ActionButton("暂停",frame:CGRect(x:169,y:463,width:133,height:33)){[weak self] in self?.onPause?()}; addSubview(pauseButton)
         soundButton = ActionButton("音效：关",frame:CGRect(x:22,y:542,width:90,height:25)){[weak self] in self?.onSound?()}; addSubview(soundButton)
@@ -83,12 +84,16 @@ final class ControlView: NSView {
             };addSubview(b);snacks.append(b)
         }
         let report=ActionButton("今日战报",frame:CGRect(x:118,y:542,width:122,height:25)){[weak self] in self?.onReport?()};addSubview(report)
-        for (i,kind) in [InvaderKind.spider,.beetle].enumerated() {
-            let title=i==0 ? "引来蜘蛛" : "引来甲虫"
-            let button=ActionButton(title,frame:CGRect(x:22+i*147,y:701,width:133,height:26)){[weak self] in
-                _ = self?.world.summonInvader(kind);self?.refresh()
-            };addSubview(button)
-        }
+        let fly=ActionButton("惊飞蟑螂 · 8",frame:CGRect(x:22,y:624,width:133,height:26)){[weak self] in
+            _ = self?.world.scareRoaches();self?.refresh()
+        };addSubview(fly)
+        let shelter=ActionButton("藏卵处 · 9",frame:CGRect(x:169,y:624,width:133,height:26)){[weak self] in self?.onTool?(.shelter)};shelter.toolTip="点桌面文件夹图标，指定藏卵处；再点同位置取消";addSubview(shelter)
+        let visitor=NSPopUpButton(frame:CGRect(x:22,y:700,width:180,height:28),pullsDown:false)
+        visitor.addItems(withTitles:InvaderKind.allCases.map{$0.title});visitor.setAccessibilityLabel("选择外来物种");addSubview(visitor)
+        let summon=ActionButton("引来外敌",frame:CGRect(x:210,y:701,width:92,height:26)){[weak self,weak visitor] in
+            guard let self=self,let index=visitor?.indexOfSelectedItem,index>=0 else {return}
+            _ = self.world.summonInvader(InvaderKind.allCases[index]);self.refresh()
+        };addSubview(summon)
         refresh()
     }
     required init?(coder:NSCoder) { fatalError() }
@@ -143,7 +148,6 @@ final class ControlView: NSView {
         else if world.mode == .companion { notice = "点虫喂食，巨型大餐能养出泰坦。" }
         else { notice = "搬粮供养下一代。拍死留尸，按 4 清扫。" }
         label(notice,23,510,11,NSColor(hex:0x64776A),.medium,width:280)
-        label("Tab 选虫或卵 · 回车使用工具 · 空格暂停",22,626,9,Ink.muted,width:280,align:.center)
 
     }
 }
