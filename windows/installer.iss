@@ -7,7 +7,7 @@
 [Setup]
 AppId={{F05EC4AA-C7D7-480F-86B8-B4FBB0A931A5}
 AppName=桌面有点脏
-AppVersion=0.11.1
+AppVersion=0.11.0
 AppPublisher=Peter 玩 AI
 DefaultDirName={localappdata}\Programs\DesktopCritters
 DefaultGroupName=桌面有点脏
@@ -16,7 +16,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir={#OutputDir}
-OutputBaseFilename=DesktopCritters-v0.11.1-Windows-x64-Setup
+OutputBaseFilename=DesktopCritters-v0.11.0-Windows-x64-Setup
 SetupIconFile=Assets\app.ico
 UninstallDisplayIcon={app}\DesktopCritters.exe
 Compression=lzma2

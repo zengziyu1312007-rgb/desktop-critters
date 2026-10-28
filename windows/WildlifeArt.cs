@@ -1,28 +1,12 @@
 using System;
-using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using DesktopCritters.Core;
 namespace DesktopCritters;
 public static partial class Art {
- public static void Aerosol(DrawingContext c,double firing=0){
-  double kick=Math.Sin(Math.Clamp(firing,0,1)*Math.PI);using var pose=Transform(c,-kick*7,kick*3,-kick*.055);
-  void Box(double x,double y,double w,double h,uint color,double r=0,double alpha=1)=>c.DrawRoundedRectangle(Brush(color,alpha),null,new Rect(x,y,w,h),r,r);
-  void Border(double x,double y,double w,double h,uint color,double r,double thickness)=>c.DrawRoundedRectangle(null,new Pen(Brush(color),thickness),new Rect(x,y,w,h),r,r);
-  void Print(string word,double y,double size,uint color){var text=new FormattedText(word,CultureInfo.GetCultureInfo("zh-CN"),FlowDirection.LeftToRight,new Typeface(new FontFamily("Microsoft YaHei UI"),FontStyles.Normal,FontWeights.Heavy,FontStretches.Normal),size,Brush(color),1);c.DrawText(text,new Point(-text.Width/2,y));}
-  Oval(c,-40,71,82,15,Brush(0x000000,.16));Box(-37,-60,74,139,0x273A31,20);Box(-33,-56,66,131,0xFFD43D,17);Box(-28,-53,13,122,0xFFF18A,7,.82);Box(23,-51,7,117,0xE7A728,4);
-  Oval(c,-31,-66,62,19,Brush(0xF6E8B8),new Pen(Brush(0x273A31),3));Box(-14,-85+kick*3,29,24,0x24352D,6);Box(-22,-94+kick*3,75,25,0xD94532,7);Border(-22,-94+kick*3,75,25,0x273A31,7,3);Box(-14,-90+kick*3,56,6,0xFF8464,3);Box(45,-90+kick*3,14,16,0x273A31,4);Oval(c,49,-86+kick*3,6,8,Brush(0xA4DAC5));
-  Box(-28,-32,56,94,0xFFF9DF,9);Border(-28,-32,56,94,0xC93B2A,9,2.5);Print("杀虫剂",-50,10,0xA82B24);
-  int i=0;foreach(var word in new[]{"敌","敌","畏"})Print(word,-27+i++*27,23,0xBA2E25);
-  for(int n=0;n<5;n++)Line(c,Brush(0x273A31),3,new V(-25+n*11,68),new V(-19+n*11,68));
-  if(firing>0)for(int n=-2;n<=2;n++)Line(c,Brush(0xE7FF9E,firing),2,new V(63,-82),new V(82+Math.Abs(n)*7,-82+n*7));
- }
- public static void AerosolTool(DrawingContext c,V p,double width,double height,double firing=0){double x=Math.Clamp(p.X-105,43,Math.Max(43,width-65)),y=Math.Clamp(p.Y+82,99,Math.Max(99,height-85));using var pose=Transform(c,x,y);Aerosol(c,firing);}
- public static void SprayMist(DrawingContext c,SprayCloud cloud){double t=Math.Clamp(cloud.Age/1.2,0,1),fade=(1-t)*.4;
-  if(cloud.Age<.3){double jet=1-cloud.Age/.3;for(int n=-2;n<=2;n++)Line(c,Brush(n==0?0xF8FFE1u:0xC3E28Cu,jet*.78),n==0?5:2,new V(cloud.P.X-50,cloud.P.Y),new V(cloud.P.X+50+(2-Math.Abs(n))*22,cloud.P.Y+n*(9+t*14)));}
-  for(int n=0;n<30;n++){double a=n*2.39996,reach=(20+n%7*10)*(.3+t*1.4),r=9+n%4*5;Oval(c,cloud.P.X+Math.Cos(a)*reach-r,cloud.P.Y+Math.Sin(a)*reach*.7-t*24-r,r*2,r*2,Brush(n%3==0?0xB9D97Bu:0xE7F2CCu,fade));if(n%3==0)Oval(c,cloud.P.X+Math.Cos(a)*reach,cloud.P.Y+Math.Sin(a)*reach*.6,3,3,Brush(0xF5FFD8,(1-t)*.7));}
- }
+ public static void Aerosol(DrawingContext c){Oval(c,-12,-26,24,54,Gradient(0xE1E4DD,0x839087));c.DrawRectangle(Brush(0x4C7153),null,new Rect(-11,-3,22,20));c.DrawRectangle(Brush(0xDBDCD4),null,new Rect(-8,-33,16,10));Line(c,Brush(0x3A443B),4,new V(0,-33),new V(15,-33));for(int n=-2;n<=2;n++)Line(c,Brush(0xBACBB2,.6),.6,new V(18,-33),new V(36,-33+n*6));}
+ public static void SprayMist(DrawingContext c,SprayCloud cloud){double t=Math.Clamp(cloud.Age/1.2,0,1),fade=(1-t)*.32;for(int n=0;n<26;n++){double a=n*2.39996,reach=(20+n%7*10)*(.3+t*1.4),r=9+n%4*5;Oval(c,cloud.P.X+Math.Cos(a)*reach-r,cloud.P.Y+Math.Sin(a)*reach*.7-t*24-r,r*2,r*2,Brush(n%3==0?0xCCD8BFu:0xDDE5D4u,fade));}using var scope=Transform(c,cloud.P.X-65,cloud.P.Y+35,opacity:Math.Max(0,1-t*2));Aerosol(c);}
  public static void Wings(DrawingContext c,double phase,double open){if(open<=0)return;foreach(int side in new[]{-1,1}){using var t=Transform(c,sy:side*open*(.75+Math.Sin(phase*1.9)*.22));var wing=new StreamGeometry();using(var p=wing.Open()){p.BeginFigure(new Point(12,3),true,true);p.BezierTo(new Point(-2,11),new Point(-53,5),new Point(-47,29),true,false);p.BezierTo(new Point(-50,48),new Point(-36,53),new Point(-23,47),true,false);p.BezierTo(new Point(2,36),new Point(18,14),new Point(12,3),true,false);}c.DrawGeometry(Brush(0xCDB37E,.5),new Pen(Brush(0x705030,.65),.55),wing);for(int n=0;n<10;n++){double k=n/9d;Line(c,Brush(0x7B6542,.43),.38,new V(11,4),new V(-40+k*22,15+k*31));Line(c,Brush(0x8D7048,.32),.3,new V(-20+k*17,12+k*14),new V(-35+k*23,17+k*23));}var cover=new StreamGeometry();using(var p=cover.Open()){p.BeginFigure(new Point(13,2),true,true);p.BezierTo(new Point(2,16),new Point(-24,26),new Point(-33,20),true,false);p.QuadraticBezierTo(new Point(-34,4),new Point(13,2),true,false);}c.DrawGeometry(Brush(0x81502C,.85),null,cover);Line(c,Brush(0xD3A567,.6),.8,new V(10,4),new V(-23,17));}}
  public static void VisitorBody(DrawingContext c,Invader v){
   if(v.Kind==InvaderKind.Centipede){for(int n=15;n>=0;n--){double x=35-n*8,y=Math.Sin(v.Phase*.55-n*.58)*8,r=7.5-n*.18;foreach(int side in new[]{-1,1}){double step=Math.Sin(v.Phase-n*.75+side)*5;Line(c,Brush(0x9A522A),1.6,new V(x,y+side*r*.6),new V(x-5+step,y+side*(r+9)),new V(x-12+step,y+side*(r+14)));Line(c,Brush(0xD29851),.6,new V(x,y+side*r*.5),new V(x-5+step,y+side*(r+9)));}Oval(c,x-6,y-r,13,r*2,Gradient(0x9B6335,0x3B2D22));Line(c,Brush(0xD7AB6C,.5),.6,new V(x-2,y-r*.65),new V(x+3,y-r*.65));}Oval(c,31,-11,22,22,Gradient(0xB66B39,0x542B1D));foreach(int side in new[]{-1,1}){Line(c,Brush(0x8E673D),.75,new V(49,side*5),new V(63,side*10),new V(76,side*(11+Math.Sin(v.Phase*.4)*3)));Line(c,Brush(0x44231B),2,new V(51,side*4),new V(59,side*6),new V(57,0));}}
